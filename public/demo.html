@@ -45,6 +45,16 @@
     padding:9px 13px;font-size:.82rem;font-weight:600;cursor:pointer}
   button.ghost:hover{background:var(--cream)}
   button.cancel-btn{border-color:#e8c9c4;color:#a3473e}
+  .typesel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  @media(max-width:480px){.typesel{grid-template-columns:1fr}}
+  .typebtn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:13px 15px;
+    border:1.5px solid var(--line);border-radius:11px;background:#fff;cursor:pointer;text-align:left;
+    font-family:inherit;transition:all .12s}
+  .typebtn:hover{border-color:var(--beige);background:var(--cream)}
+  .typebtn.active{border-color:var(--green);background:#eaf0ec}
+  .typebtn .tb-title{font-size:.95rem;font-weight:600;color:var(--green-dark)}
+  .typebtn .tb-sub{font-size:.78rem;color:var(--muted)}
+  .typebtn.active .tb-sub{color:var(--green-dark)}
   button.cancel-btn:hover{background:#f6e9e7}
   .msg{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-bottom:14px;display:none}
   .msg.ok{background:#eaf0ec;color:var(--green-dark);border:1px solid #cbddd0;display:block}
@@ -131,6 +141,18 @@
     <div class="card">
       <h2>Patient & Termin erfassen</h2>
       <div class="msg" id="formMsg"></div>
+      <label>Terminart *</label>
+      <div class="typesel" id="typeSel">
+        <button type="button" class="typebtn" data-type="osteo">
+          <span class="tb-title">Osteopathie</span>
+          <span class="tb-sub">60 Minuten · 120 €</span>
+        </button>
+        <button type="button" class="typebtn" data-type="check">
+          <span class="tb-title">Osteopathie-Check</span>
+          <span class="tb-sub">20 Minuten · 26,50 €</span>
+        </button>
+      </div>
+      <div class="hint" style="margin:-8px 0 16px">Bitte zuerst die Terminart wählen.</div>
       <div class="row">
         <div><label>Vorname *</label><input id="firstName" autocomplete="off"></div>
         <div><label>Nachname *</label><input id="lastName" autocomplete="off"></div>
@@ -237,6 +259,16 @@ document.querySelectorAll('.tab').forEach(t=>{
   };
 });
 
+// ---- Terminart-Auswahl ----
+let selectedType='';
+document.querySelectorAll('.typebtn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    selectedType=b.dataset.type;
+  };
+});
+
 // ---- Termin anlegen ----
 document.getElementById('submitBtn').onclick = ()=>{
   const msg=document.getElementById('formMsg'); msg.className='msg'; msg.style.display='none';
@@ -244,7 +276,8 @@ document.getElementById('submitBtn').onclick = ()=>{
     firstName:val('firstName'), lastName:val('lastName'), email:val('email'),
     cc:val('cc'), phone:val('phone').replace(/\D/g,''),
     date:val('date'), time:val('time'),
-    practitioner:val('practitioner'), note:val('note')
+    practitioner:val('practitioner'), note:val('note'),
+    type:selectedType
   };
   const err=validate(a);
   if(err){ msg.className='msg err'; msg.textContent=err; return; }
@@ -277,10 +310,12 @@ function createAppointment(a){
     status:'active', cancelledAt:''
   };
   DB.push(rec);
-  // Bestätigungsmail (Demo -> Outbox)
+  const betreff = (a.type==='check')
+    ? 'Ihr Osteopathie-Check bei PhysioPro Lübeck'
+    : 'Ihr Osteopathie-Termin bei PhysioPro Lübeck';
   pushOutbox({
     type:'mail', to:a.email,
-    subject:'Ihr Osteopathie-Termin bei PhysioPro Lübeck',
+    subject:betreff,
     html: confirmationHtml(a), ts: nowSim()
   });
   rec.confirmSent=true;
@@ -289,6 +324,7 @@ function createAppointment(a){
 
 function val(id){ return document.getElementById(id).value.trim(); }
 function validate(d){
+  if(!d.type) return 'Bitte zuerst die Terminart wählen.';
   if(!d.firstName||!d.lastName) return 'Bitte Vor- und Nachname angeben.';
   if(!/^[^@]+@[^@]+\.[^@]+$/.test(d.email)) return 'Bitte gültige E-Mail angeben.';
   if(!d.date||!d.time) return 'Bitte Datum und Uhrzeit angeben.';
@@ -297,6 +333,8 @@ function validate(d){
 }
 function clearForm(){
   ['firstName','lastName','email','phone','note'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
+  selectedType='';
 }
 
 // ---- Liste ----
@@ -316,7 +354,7 @@ function renderList(){
     const phone = a.phone ? ' · +'+esc(a.cc.replace(/\D/g,''))+' '+esc(a.phone) : '';
     return `<div class="appt">
       <div class="top"><span class="name">${esc(a.firstName)} ${esc(a.lastName)}</span><span class="when">${when}</span></div>
-      <div class="meta">${esc(a.practitioner||'')} · ${esc(a.email)}${phone}</div>
+      <div class="meta">${esc(a.practitioner||'')} · ${a.type==='check'?'Osteo-Check (20 Min)':'Osteopathie (60 Min)'} · ${esc(a.email)}${phone}</div>
       <div class="badges">
         ${badge(a.confirmSent,'Bestätigung')}${badge(a.reminder3dSent,'3 Tage')}${badge(a.reminder24hSent,'24 h')}
       </div>
@@ -346,9 +384,11 @@ function askCancel(id){
 }
 function doCancel(a, lateNotice){
   a.status='cancelled'; a.cancelledAt=new Date(nowSim()).toISOString();
+  const betreff = (a.type==='check') ? 'Absage Ihres Osteopathie-Checks bei PhysioPro Lübeck'
+                                     : 'Absage Ihres Osteopathie-Termins bei PhysioPro Lübeck';
   pushOutbox({
     type:'mail', to:a.email,
-    subject:'Absage Ihres Osteopathie-Termins bei PhysioPro Lübeck',
+    subject:betreff,
     html: cancellationHtml(a, lateNotice), ts: nowSim()
   });
   updateObCount();
@@ -436,9 +476,9 @@ document.getElementById('seed').onclick=()=>{
   const base=nowSim();
   const mk=(h)=>{ const d=new Date(base+h*3600*1000); return {date:d.toISOString().slice(0,10), time:d.toTimeString().slice(0,5)}; };
   const samples=[
-    {firstName:'Maria',lastName:'Schmidt',email:'maria@example.de',cc:'+49',phone:'15123456789',practitioner:'Julia Mielke',note:'',...mk(72)},
-    {firstName:'Tom',lastName:'Berger',email:'tom@example.de',cc:'+49',phone:'17698765432',practitioner:'Julia Mielke',note:'kurzfristig',...mk(25)},
-    {firstName:'Lena',lastName:'Voss',email:'lena@example.de',cc:'+49',phone:'15201112233',practitioner:'Hanna Wrobel',note:'',...mk(240)}
+    {firstName:'Maria',lastName:'Schmidt',email:'maria@example.de',cc:'+49',phone:'15123456789',practitioner:'Julia Mielke',note:'',type:'osteo',...mk(72)},
+    {firstName:'Tom',lastName:'Berger',email:'tom@example.de',cc:'+49',phone:'17698765432',practitioner:'Julia Mielke',note:'kurzfristig',type:'check',...mk(25)},
+    {firstName:'Lena',lastName:'Voss',email:'lena@example.de',cc:'+49',phone:'15201112233',practitioner:'Hanna Wrobel',note:'',type:'osteo',...mk(240)}
   ];
   samples.forEach(createAppointment);
   const msg=document.getElementById('simMsg'); msg.className='msg ok';
@@ -448,19 +488,21 @@ document.getElementById('seed').onclick=()=>{
 // ---- Erinnerungs-Mails (identisch zur Server-Version _mail.js) ----
 function reminder3dHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   return mailShell('Terminerinnerung', `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
-    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">wir möchten Sie an Ihren bevorstehenden Osteopathie-Termin erinnern:</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">wir möchten Sie an Ihren bevorstehenden Termin (${t.label}) erinnern:</p>
     ${apptBlock(a, long, time)}
     <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
-      <div style="font-size:13px;color:#7a766d;line-height:1.5">Falls Ihnen der Termin nicht mehr passt, geben Sie uns bitte bis spätestens <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>. So können wir den Platz noch anderweitig vergeben. Bei späterer Absage wird das <strong>volle Behandlungshonorar</strong> als Ausfallhonorar berechnet.</div></div>
+      <div style="font-size:13px;color:#7a766d;line-height:1.5">Falls Ihnen der Termin nicht mehr passt, geben Sie uns bitte bis spätestens <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>. So können wir den Platz noch anderweitig vergeben. Bei späterer Absage wird ${t.feeCancelLate} als Ausfallhonorar berechnet.</div></div>
     <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Bis bald!<br>Ihr PhysioPro-Team</p>`);
 }
 function reminder24hHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   return mailShell('Terminerinnerung', `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
-    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">kurze Erinnerung: Ihr Osteopathie-Termin findet <strong>morgen</strong> statt.</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">kurze Erinnerung: Ihr Termin (${t.label}) findet <strong>morgen</strong> statt.</p>
     ${apptBlock(a, long, time)}
     <p style="margin:0 0 6px;font-size:14px;line-height:1.55">Wir freuen uns auf Sie! Falls etwas dazwischenkommt, melden Sie sich bitte umgehend telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a>.</p>
     <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Ihr PhysioPro-Team</p>`);
@@ -471,6 +513,18 @@ function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>
 function fmtParts(a){
   const dt=new Date(a.date+'T'+a.time);
   return { long: dt.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}), time: a.time+' Uhr' };
+}
+function apptType(a){
+  if(a && a.type==='check'){
+    return { label:'Osteopathie-Check', duration:'20 Minuten',
+      feeConfirm:'eine Ausfallgebühr in Höhe von <strong>26,50 €</strong>',
+      feeCancelLate:'eine Ausfallgebühr in Höhe von <strong>26,50 €</strong>',
+      priceLine:'Osteopathie-Check · 20 Minuten · 26,50 €' };
+  }
+  return { label:'Osteopathie', duration:'60 Minuten',
+    feeConfirm:'das <strong>volle Behandlungshonorar</strong> als Ausfallhonorar',
+    feeCancelLate:'das <strong>volle Behandlungshonorar</strong>',
+    priceLine:'Osteopathie · 60 Minuten' };
 }
 function mailShell(subtitle, inner){
   return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"></head>
@@ -492,33 +546,35 @@ function apptBlock(a, dateStr, timeStr){
 <div style="font-size:13px;color:#7a766d">Behandler:in</div>
 <div style="font-size:15px;font-weight:600;color:#3f5648;margin:2px 0 12px">${esc(a.practitioner||'PhysioPro Team')}</div>
 <div style="font-size:13px;color:#7a766d">Behandlung</div>
-<div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">Osteopathie · 60 Minuten</div></td></tr></table>`;
+<div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">${apptType(a).priceLine}</div></td></tr></table>`;
 }
 function confirmationHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   return mailShell('Terminbestätigung', `
 <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
-<p style="margin:0 0 22px;font-size:15px;line-height:1.55">vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Osteopathie-Termin:</p>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.55">vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Termin (${t.label}):</p>
 ${apptBlock(a, long, time)}
 <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
 <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage (Ausfallhonorar)</div>
-<div style="font-size:13px;color:#7a766d;line-height:1.5">Termine, die nicht mindestens <strong>24 Stunden</strong> vor Behandlungsbeginn abgesagt werden, werden mit dem <strong>vollen Behandlungshonorar</strong> als Ausfallhonorar in Rechnung gestellt, da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann. Dieses Ausfallhonorar ist von privaten Krankenversicherungen und Beihilfestellen in der Regel nicht erstattungsfähig. Absagen nehmen wir gerne entgegen – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.</div></div>
+<div style="font-size:13px;color:#7a766d;line-height:1.5">Termine, die nicht mindestens <strong>24 Stunden</strong> vor Behandlungsbeginn abgesagt werden, werden mit ${t.feeConfirm} in Rechnung gestellt, da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann. Dieses Ausfallhonorar ist von privaten Krankenversicherungen und Beihilfestellen in der Regel nicht erstattungsfähig. Absagen nehmen wir gerne entgegen – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.</div></div>
 <p style="margin:0 0 6px;font-size:14px;line-height:1.55">Zur Sicherheit erhalten Sie <strong>3 Tage</strong> und <strong>24 Stunden</strong> vor dem Termin noch eine kurze Erinnerung per E-Mail.</p>
 <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Wir freuen uns auf Ihren Besuch.<br>Ihr PhysioPro-Team</p>`);
 }
 
 function cancellationHtml(a, lateNotice){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   const noticeBox = lateNotice
     ? `<div style="background:#f6ede9;border-left:3px solid #b07d3f;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
 <div style="font-size:13px;font-weight:600;color:#8a5a2b;margin-bottom:6px">Hinweis zum Ausfallhonorar</div>
-<div style="font-size:13px;color:#7a766d;line-height:1.5">Ihre Absage erreicht uns <strong>weniger als 24 Stunden</strong> vor dem Termin. Gemäß der mit Ihnen getroffenen Honorarvereinbarung kann in diesem Fall das <strong>volle Behandlungshonorar</strong> als Ausfallhonorar berechnet werden, sofern der reservierte Zeitraum nicht mehr anderweitig vergeben werden kann. Wir prüfen das im Einzelfall und melden uns gegebenenfalls bei Ihnen.</div></div>`
+<div style="font-size:13px;color:#7a766d;line-height:1.5">Ihre Absage erreicht uns <strong>weniger als 24 Stunden</strong> vor dem Termin. Gemäß der mit Ihnen getroffenen Honorarvereinbarung kann in diesem Fall ${t.feeCancelLate} als Ausfallhonorar berechnet werden, sofern der reservierte Zeitraum nicht mehr anderweitig vergeben werden kann. Wir prüfen das im Einzelfall und melden uns gegebenenfalls bei Ihnen.</div></div>`
     : `<div style="background:#eaf0ec;border-left:3px solid #55725e;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
 <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Kostenfreie Absage</div>
 <div style="font-size:13px;color:#7a766d;line-height:1.5">Ihre Absage ist rechtzeitig (mehr als 24 Stunden vor dem Termin) bei uns eingegangen – es entstehen <strong>keine Kosten</strong>. Vielen Dank für die frühzeitige Information.</div></div>`;
   return mailShell('Terminabsage', `
 <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
-<p style="margin:0 0 22px;font-size:15px;line-height:1.55">wir bestätigen die Absage Ihres folgenden Osteopathie-Termins:</p>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.55">wir bestätigen die Absage Ihres folgenden Termins (${t.label}):</p>
 ${apptBlock(a, long, time)}
 ${noticeBox}
 <p style="margin:0 0 6px;font-size:14px;line-height:1.55">Gerne vereinbaren wir einen neuen Termin mit Ihnen – melden Sie sich einfach telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.</p>
