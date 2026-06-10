@@ -57,10 +57,10 @@ function b64url(input){
 }
 
 const SHEET_ID = () => process.env.SHEET_ID;
-const RANGE = 'Termine!A:P';
+const RANGE = 'Termine!A:Q';
 const HEADERS = ['id','createdAt','firstName','lastName','email','cc','phone',
   'date','time','practitioner','note','confirmSent','reminder3dSent','reminder24hSent',
-  'status','cancelledAt'];
+  'status','cancelledAt','type'];
 
 async function sheetAppend(row){
   const token = await getGoogleAccessToken();
