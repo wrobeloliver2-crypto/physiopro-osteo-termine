@@ -39,6 +39,30 @@ async function sendMail(to, subject, html){
 
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+// Terminart-Definition. a.type: 'check' = Osteo-Check (20 Min, 26,50 €),
+// sonst = Osteopathie (60 Min, volles Behandlungshonorar).
+function apptType(a){
+  if(a && a.type==='check'){
+    return {
+      label: 'Osteopathie-Check',
+      duration: '20 Minuten',
+      // Wortlaut für die Ausfall-/Absage-Hinweise
+      feeShort: '26,50 €',
+      feeConfirm: 'eine Ausfallgebühr in Höhe von <strong>26,50 €</strong>',
+      feeCancelLate: 'eine Ausfallgebühr in Höhe von <strong>26,50 €</strong>',
+      priceLine: 'Osteopathie-Check · 20 Minuten · 26,50 €'
+    };
+  }
+  return {
+    label: 'Osteopathie',
+    duration: '60 Minuten',
+    feeShort: 'das volle Behandlungshonorar',
+    feeConfirm: 'das <strong>volle Behandlungshonorar</strong> als Ausfallhonorar',
+    feeCancelLate: 'das <strong>volle Behandlungshonorar</strong>',
+    priceLine: 'Osteopathie · 60 Minuten'
+  };
+}
+
 // Gemeinsames Mail-Gerüst (Header/Footer im PhysioPro-Style)
 function mailShell(subtitle, inner){
   return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"></head>
@@ -61,6 +85,7 @@ function mailShell(subtitle, inner){
 
 // Wiederverwendbarer Termin-Block
 function apptBlock(a, dateStr, timeStr){
+  const t = apptType(a);
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;border:1px solid #e5ddd0;border-radius:12px;margin-bottom:22px">
     <tr><td style="padding:18px 20px">
       <div style="font-size:13px;color:#7a766d">Datum &amp; Uhrzeit</div>
@@ -68,7 +93,7 @@ function apptBlock(a, dateStr, timeStr){
       <div style="font-size:13px;color:#7a766d">Behandler:in</div>
       <div style="font-size:15px;font-weight:600;color:#3f5648;margin:2px 0 12px">${esc(a.practitioner||'PhysioPro Team')}</div>
       <div style="font-size:13px;color:#7a766d">Behandlung</div>
-      <div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">Osteopathie · 60 Minuten</div>
+      <div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">${t.priceLine}</div>
     </td></tr></table>`;
 }
 function fmtParts(a){
@@ -82,17 +107,18 @@ function fmtParts(a){
 // Terminbestätigung
 function confirmationHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   const inner = `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
     <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
-      vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Osteopathie-Termin:
+      vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Termin (${t.label}):
     </p>
     ${apptBlock(a, long, time)}
     <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
       <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage (Ausfallhonorar)</div>
       <div style="font-size:13px;color:#7a766d;line-height:1.5">
         Termine, die nicht mindestens <strong>24 Stunden</strong> vor Behandlungsbeginn abgesagt werden,
-        werden mit dem <strong>vollen Behandlungshonorar</strong> als Ausfallhonorar in Rechnung gestellt,
+        werden mit ${t.feeConfirm} in Rechnung gestellt,
         da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann. Dieses Ausfallhonorar
         ist von privaten Krankenversicherungen und Beihilfestellen in der Regel nicht erstattungsfähig.
         Absagen nehmen wir gerne entgegen – telefonisch unter
@@ -113,10 +139,11 @@ function confirmationHtml(a){
 // Erinnerung 3 Tage vorher
 function reminder3dHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   const inner = `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
     <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
-      wir möchten Sie an Ihren bevorstehenden Osteopathie-Termin erinnern:
+      wir möchten Sie an Ihren bevorstehenden Termin (${t.label}) erinnern:
     </p>
     ${apptBlock(a, long, time)}
     <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
@@ -125,8 +152,8 @@ function reminder3dHtml(a){
         <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter
         <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an
         <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.
-        So können wir den Platz noch anderweitig vergeben. Bei späterer Absage wird das
-        <strong>volle Behandlungshonorar</strong> als Ausfallhonorar berechnet.
+        So können wir den Platz noch anderweitig vergeben. Bei späterer Absage wird ${t.feeCancelLate}
+        als Ausfallhonorar berechnet.
       </div>
     </div>
     <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Bis bald!<br>Ihr PhysioPro-Team</p>`;
@@ -136,10 +163,11 @@ function reminder3dHtml(a){
 // Erinnerung 24 Stunden vorher
 function reminder24hHtml(a){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   const inner = `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
     <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
-      kurze Erinnerung: Ihr Osteopathie-Termin findet <strong>morgen</strong> statt.
+      kurze Erinnerung: Ihr Termin (${t.label}) findet <strong>morgen</strong> statt.
     </p>
     ${apptBlock(a, long, time)}
     <p style="margin:0 0 6px;font-size:14px;line-height:1.55">
@@ -153,12 +181,13 @@ function reminder24hHtml(a){
 // Absage-/Stornobestätigung. lateNotice = true, wenn <24h vor Termin (Ausfallhonorar-Prüfung).
 function cancellationHtml(a, lateNotice){
   const {long, time} = fmtParts(a);
+  const t = apptType(a);
   const noticeBox = lateNotice
     ? `<div style="background:#f6ede9;border-left:3px solid #b07d3f;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
         <div style="font-size:13px;font-weight:600;color:#8a5a2b;margin-bottom:6px">Hinweis zum Ausfallhonorar</div>
         <div style="font-size:13px;color:#7a766d;line-height:1.5">
           Ihre Absage erreicht uns <strong>weniger als 24 Stunden</strong> vor dem Termin. Gemäß der mit Ihnen
-          getroffenen Honorarvereinbarung kann in diesem Fall das <strong>volle Behandlungshonorar</strong> als
+          getroffenen Honorarvereinbarung kann in diesem Fall ${t.feeCancelLate} als
           Ausfallhonorar berechnet werden, sofern der reservierte Zeitraum nicht mehr anderweitig vergeben werden kann.
           Wir prüfen das im Einzelfall und melden uns gegebenenfalls bei Ihnen.
         </div>
@@ -173,7 +202,7 @@ function cancellationHtml(a, lateNotice){
   const inner = `
     <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
     <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
-      wir bestätigen die Absage Ihres folgenden Osteopathie-Termins:
+      wir bestätigen die Absage Ihres folgenden Termins (${t.label}):
     </p>
     ${apptBlock(a, long, time)}
     ${noticeBox}
