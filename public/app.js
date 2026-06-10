@@ -56,6 +56,7 @@ document.querySelectorAll('.tab').forEach(t=>{
 
 // === Terminart-Auswahl ===
 let selectedType = '';
+let ALL_APPTS = [];   // zuletzt geladene Termine (für Patientensuche)
 document.querySelectorAll('.typebtn').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
@@ -63,6 +64,72 @@ document.querySelectorAll('.typebtn').forEach(b=>{
     selectedType = b.dataset.type;
   };
 });
+
+// === Patientensuche (Name oder Telefon) ===
+function uniquePatients(){
+  // neueste Daten gewinnen: nach createdAt absteigend, dann pro Person ersten Treffer behalten
+  const sorted = [...ALL_APPTS].sort((a,b)=>
+    String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const seen = new Map();
+  for(const a of sorted){
+    const key = ((a.firstName||'')+'|'+(a.lastName||'')+'|'+(a.email||'')).toLowerCase().trim();
+    if(key==='||') continue;
+    if(!seen.has(key)) seen.set(key, a);
+  }
+  return [...seen.values()];
+}
+
+function patSearch(q){
+  const term = q.toLowerCase().trim();
+  const digits = q.replace(/\D/g,'');
+  if(term.length < 2 && digits.length < 3) return [];
+  return uniquePatients().filter(p=>{
+    const name = ((p.firstName||'')+' '+(p.lastName||'')).toLowerCase();
+    const phone = String(p.phone||'').replace(/\D/g,'');
+    const nameHit = term.length>=2 && name.includes(term);
+    const phoneHit = digits.length>=3 && phone.includes(digits);
+    return nameHit || phoneHit;
+  }).slice(0,8);
+}
+
+function fillFromPatient(p){
+  document.getElementById('firstName').value = p.firstName||'';
+  document.getElementById('lastName').value  = p.lastName||'';
+  document.getElementById('email').value     = p.email||'';
+  document.getElementById('cc').value        = p.cc||'+49';
+  document.getElementById('phone').value     = p.phone||'';
+  const res = document.getElementById('patResults');
+  res.classList.remove('show'); res.innerHTML='';
+  document.getElementById('patSearch').value = ((p.firstName||'')+' '+(p.lastName||'')).trim();
+}
+
+(function initPatSearch(){
+  const inp = document.getElementById('patSearch');
+  const res = document.getElementById('patResults');
+  if(!inp) return;
+  inp.addEventListener('input', ()=>{
+    const hits = patSearch(inp.value);
+    if(inp.value.trim().length < 2){ res.classList.remove('show'); res.innerHTML=''; return; }
+    if(!hits.length){
+      res.innerHTML = '<div class="pat-empty">Kein bestehender Patient gefunden.</div>';
+      res.classList.add('show'); return;
+    }
+    res.innerHTML = hits.map((p,i)=>{
+      const sub = [p.email, (p.cc||'')+' '+(p.phone||'')].filter(s=>s && s.trim()).join(' · ');
+      return `<div class="pat-item" data-i="${i}">
+        <div class="pi-name">${esc(p.firstName)} ${esc(p.lastName)}</div>
+        <div class="pi-sub">${esc(sub)}</div></div>`;
+    }).join('');
+    res.classList.add('show');
+    res.querySelectorAll('.pat-item').forEach(el=>{
+      el.onclick = ()=> fillFromPatient(hits[+el.dataset.i]);
+    });
+  });
+  // Klick außerhalb schließt die Liste
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.patsearch')) res.classList.remove('show');
+  });
+})();
 
 // === Termin anlegen ===
 document.getElementById('submitBtn').onclick = async ()=>{
@@ -111,7 +178,7 @@ function validate(d){
   return null;
 }
 function clearForm(){
-  ['firstName','lastName','email','phone','note'].forEach(id=>document.getElementById(id).value='');
+  ['firstName','lastName','email','phone','note','patSearch'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
   selectedType = '';
 }
@@ -140,6 +207,7 @@ async function loadList(){
     });
     const d = await r.json();
     if(!r.ok){ box.innerHTML='<div class="empty">Konnte Termine nicht laden.</div>'; return; }
+    ALL_APPTS = d.appointments||[];
     renderTiles(d.appointments||[]);
     renderList(d.appointments||[]);
   }catch(e){ box.innerHTML='<div class="empty">Verbindungsfehler.</div>'; }
