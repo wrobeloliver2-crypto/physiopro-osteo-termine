@@ -52,6 +52,16 @@
   button.ghost:hover{background:var(--cream)}
   button.cancel-btn{border-color:#e8c9c4;color:#a3473e}
   button.cancel-btn:hover{background:#f6e9e7}
+  .typesel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  @media(max-width:480px){.typesel{grid-template-columns:1fr}}
+  .typebtn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:13px 15px;
+    border:1.5px solid var(--line);border-radius:11px;background:#fff;cursor:pointer;text-align:left;
+    font-family:inherit;transition:all .12s}
+  .typebtn:hover{border-color:var(--beige);background:var(--cream)}
+  .typebtn.active{border-color:var(--green);background:#eaf0ec}
+  .typebtn .tb-title{font-size:.95rem;font-weight:600;color:var(--green-dark)}
+  .typebtn .tb-sub{font-size:.78rem;color:var(--muted)}
+  .typebtn.active .tb-sub{color:var(--green-dark)}
   .msg{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-bottom:14px;display:none}
   .msg.ok{background:#eaf0ec;color:var(--green-dark);border:1px solid #cbddd0;display:block}
   .msg.err{background:#f6e9e7;color:var(--err);border:1px solid #e8c9c4;display:block}
@@ -118,6 +128,19 @@
     <div class="card">
       <h2>Patient & Termin erfassen</h2>
       <div class="msg" id="formMsg"></div>
+
+      <label>Terminart *</label>
+      <div class="typesel" id="typeSel">
+        <button type="button" class="typebtn" data-type="osteo">
+          <span class="tb-title">Osteopathie</span>
+          <span class="tb-sub">60 Minuten · 120 €</span>
+        </button>
+        <button type="button" class="typebtn" data-type="check">
+          <span class="tb-title">Osteopathie-Check</span>
+          <span class="tb-sub">20 Minuten · 26,50 €</span>
+        </button>
+      </div>
+      <div class="hint" style="margin:-8px 0 16px">Bitte zuerst die Terminart wählen.</div>
 
       <div class="row">
         <div><label>Vorname *</label><input id="firstName" autocomplete="off"></div>
