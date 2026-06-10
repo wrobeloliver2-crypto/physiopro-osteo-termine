@@ -30,6 +30,8 @@ document.getElementById('loginBtn').onclick = async ()=>{
     const d = await r.json();
     if(r.ok && d.token){
       TOKEN = d.token; sessionStorage.setItem('osteo_token',TOKEN); gotoApp();
+    }else if(d.error==='config'){
+      msg.className='msg err'; msg.textContent='Login noch nicht bereit – bitte Variablen prüfen und Site neu deployen.';
     }else{
       msg.className='msg err'; msg.textContent='Code ungültig.';
     }
@@ -98,8 +100,10 @@ function clearForm(){
 
 // === Bestätigungs-Overlay (auto-close nach 2,5 s) ===
 let toastTimer=null;
-function showToast(email){
+function showToast(email, title){
   const t=document.getElementById('toast');
+  const tt=document.getElementById('toastTitle');
+  if(tt) tt.textContent = title || 'Bestätigung gesendet';
   document.getElementById('toastSub').textContent = email ? ('an '+email) : 'an die angegebene E-Mail-Adresse';
   const check=t.querySelector('.toast-check');
   check.style.display='none'; void check.offsetWidth; check.style.display='';
@@ -124,23 +128,26 @@ async function loadList(){
 }
 
 function renderTiles(appts){
-  const upcoming = appts.filter(a=>new Date(a.date+'T'+a.time) >= new Date());
+  const active = appts.filter(a=>(a.status||'active')!=='cancelled' && new Date(a.date+'T'+a.time) >= new Date());
+  const cancelled = appts.filter(a=>a.status==='cancelled');
   const tiles=document.getElementById('tiles');
   tiles.innerHTML=
-    tile(upcoming.length,'anstehend')+
-    tile(appts.length,'gesamt');
+    tile(active.length,'anstehend')+
+    tile(cancelled.length,'abgesagt');
 }
 function tile(n,l){ return `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`; }
 
 function renderList(appts){
   const box=document.getElementById('apptList');
   const upcoming = appts
-    .filter(a=>new Date(a.date+'T'+a.time) >= new Date())
+    .filter(a=>(a.status||'active')!=='cancelled' && new Date(a.date+'T'+a.time) >= new Date())
     .sort((a,b)=> new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
   if(!upcoming.length){ box.innerHTML='<div class="empty">Keine anstehenden Termine.</div>'; return; }
   box.innerHTML = upcoming.map(a=>{
     const dt=new Date(a.date+'T'+a.time);
     const when=dt.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+a.time;
+    const hoursUntil=(dt-new Date())/3600000;
+    const free=hoursUntil>=24;
     return `<div class="appt">
       <div class="top"><span class="name">${esc(a.firstName)} ${esc(a.lastName)}</span><span class="when">${when}</span></div>
       <div class="meta">${esc(a.practitioner||'')} · ${esc(a.email)}</div>
@@ -149,6 +156,12 @@ function renderList(appts){
         ${badge(a.reminder3dSent,'Erinnerung 3 T.')}
         ${badge(a.reminder24hSent,'Erinnerung 24 h')}
       </div>
+      <div style="margin-top:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="ghost cancel-btn" onclick="askCancel('${a.id}','${esc(a.firstName)} ${esc(a.lastName)}','${a.date}','${a.time}')">Termin absagen</button>
+        <span style="font-size:.74rem;color:${free?'var(--green)':'var(--warn)'}">
+          ${free?'Absage derzeit kostenfrei':'Kurzfristig – Ausfallhonorar-Prüfung'}
+        </span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -156,3 +169,29 @@ function badge(done,label){
   return `<span class="badge ${done?'done':'wait'}">${done?'✓ ':''}${label}</span>`;
 }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// === Termin absagen (Rezeption) ===
+async function askCancel(id, name, date, time){
+  const dt=new Date(date+'T'+time);
+  const hoursUntil=(dt-new Date())/3600000;
+  const free=hoursUntil>=24;
+  const whenStr=dt.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long'})+' um '+time+' Uhr';
+  const msg = free
+    ? `Termin von ${name} am ${whenStr} absagen?\n\nDie Absage ist KOSTENFREI (mehr als 24 Stunden vorher).\n\nDer Patient erhält eine Absage-Bestätigung per E-Mail.`
+    : `Termin von ${name} am ${whenStr} absagen?\n\n⚠️ KURZFRISTIG: weniger als 24 Stunden vorher.\nGemäß Honorarvereinbarung kann das volle Behandlungshonorar als Ausfallhonorar berechnet werden. Die Absage-Mail weist den Patienten darauf hin, dass wir dies prüfen.\n\nTrotzdem absagen?`;
+  if(!confirm(msg)) return;
+  try{
+    const r = await fetch('/.netlify/functions/cancel-appointment',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},
+      body:JSON.stringify({id})
+    });
+    const d = await r.json();
+    if(r.ok){
+      showToast('', 'Absage gesendet');
+      loadList();
+    }else{
+      alert(d.error||'Absage fehlgeschlagen.');
+    }
+  }catch(e){ alert('Verbindungsfehler bei der Absage.'); }
+}

@@ -57,9 +57,10 @@ function b64url(input){
 }
 
 const SHEET_ID = () => process.env.SHEET_ID;
-const RANGE = 'Termine!A:N';
+const RANGE = 'Termine!A:P';
 const HEADERS = ['id','createdAt','firstName','lastName','email','cc','phone',
-  'date','time','practitioner','note','confirmSent','reminder3dSent','reminder24hSent'];
+  'date','time','practitioner','note','confirmSent','reminder3dSent','reminder24hSent',
+  'status','cancelledAt'];
 
 async function sheetAppend(row){
   const token = await getGoogleAccessToken();
@@ -100,10 +101,53 @@ async function sheetUpdateCell(rowIndex, colLetter, value){
 }
 
 // Spaltenbuchstaben für Status
-const COL = { confirmSent:'L', reminder3dSent:'M', reminder24hSent:'N' };
+const COL = { confirmSent:'L', reminder3dSent:'M', reminder24hSent:'N', status:'O', cancelledAt:'P' };
+
+// ---------- Zeitzone Europe/Berlin ----------
+// Wandelt ein lokales Datum/Uhrzeit-Paar (wie von der Rezeption eingegeben, gemeint
+// als Berliner Zeit) in einen korrekten UTC-Zeitstempel (ms) um. Berücksichtigt
+// automatisch Sommer-/Winterzeit (MESZ/MEZ), ohne externe Bibliothek.
+//
+// Ansatz: Wir bestimmen den UTC-Offset von Berlin zum fraglichen Zeitpunkt über
+// Intl.DateTimeFormat und ziehen ihn ab. Iteration deckt den Grenzfall der
+// Zeitumstellung sauber ab.
+function berlinOffsetMinutes(utcMs){
+  // Liefert den Offset (Minuten) von Europe/Berlin gegenüber UTC zum gegebenen Zeitpunkt.
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone:'Europe/Berlin', hourCycle:'h23',
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+  const parts = dtf.formatToParts(new Date(utcMs)).reduce((o,p)=>{ o[p.type]=p.value; return o; }, {});
+  const asUTC = Date.UTC(+parts.year, +parts.month-1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return Math.round((asUTC - utcMs) / 60000);
+}
+
+// date: "YYYY-MM-DD", time: "HH:MM" (als Berliner Lokalzeit gemeint) -> UTC-ms
+function berlinLocalToUtcMs(date, time){
+  if(!date || !time) return NaN;
+  const [y,m,d] = date.split('-').map(Number);
+  const [hh,mm] = time.split(':').map(Number);
+  // Erster Schätzwert: als wäre die Eingabe UTC
+  let guess = Date.UTC(y, m-1, d, hh, mm, 0);
+  // Offset an diesem Punkt ermitteln und korrigieren (zweimal für DST-Grenzfälle)
+  let off = berlinOffsetMinutes(guess);
+  let utc = guess - off*60000;
+  off = berlinOffsetMinutes(utc);
+  utc = guess - off*60000;
+  return utc;
+}
+
+// Aktuelle Berliner Stunde (0-23) zum gegebenen UTC-Zeitpunkt – für Ruhezeiten.
+function berlinHour(utcMs){
+  const h = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Berlin', hourCycle:'h23', hour:'2-digit' })
+    .formatToParts(new Date(utcMs)).find(p=>p.type==='hour').value;
+  return +h;
+}
 
 module.exports = {
   signToken, verifyToken, requireAuth,
   sheetAppend, sheetReadAll, sheetUpdateCell,
-  HEADERS, COL
+  HEADERS, COL,
+  berlinLocalToUtcMs, berlinHour
 };

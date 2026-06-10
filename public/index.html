@@ -42,6 +42,11 @@
     font-size:.98rem;font-weight:600;width:100%;cursor:pointer;transition:background .15s}
   button.primary:hover{background:var(--green-dark)}
   button.primary:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:#fff;color:var(--green-dark);border:1px solid var(--line);border-radius:10px;
+    padding:9px 13px;font-size:.82rem;font-weight:600;cursor:pointer}
+  button.ghost:hover{background:var(--cream)}
+  button.cancel-btn{border-color:#e8c9c4;color:#a3473e}
+  button.cancel-btn:hover{background:#f6e9e7}
   .msg{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-bottom:14px;display:none}
   .msg.ok{background:#eaf0ec;color:var(--green-dark);border:1px solid #cbddd0;display:block}
   .msg.err{background:#f6e9e7;color:var(--err);border:1px solid #e8c9c4;display:block}
@@ -168,7 +173,7 @@
     <div class="toast-check">
       <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M16 27l7 7 13-14"/></svg>
     </div>
-    <div class="toast-title">Bestätigung gesendet</div>
+    <div class="toast-title" id="toastTitle">Bestätigung gesendet</div>
     <div class="toast-sub" id="toastSub">an die angegebene E-Mail-Adresse</div>
   </div>
 </div>

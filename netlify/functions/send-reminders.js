@@ -1,4 +1,4 @@
-const { sheetReadAll, sheetUpdateCell, COL } = require('./_lib');
+const { sheetReadAll, sheetUpdateCell, COL, berlinLocalToUtcMs, berlinHour } = require('./_lib');
 const { sendMail, reminder3dHtml, reminder24hHtml } = require('./_mail');
 
 // Läuft per Cron (Konfiguration in netlify.toml). Empfehlung: alle 30–60 Min.
@@ -20,8 +20,8 @@ exports.handler = async ()=>{
   const now = Date.now();
   const results = { checked:0, sent3d:0, sent24h:0, errors:[] };
 
-  // Ruhezeiten: nicht vor 8:00 / nicht nach 20:00 (lokale Zeit DE, grob CEST = UTC+2)
-  const localHour = new Date(now + 2*3600*1000).getUTCHours();
+  // Ruhezeiten: nicht vor 8:00 / nicht nach 20:00 (Berliner Zeit, DST-sicher)
+  const localHour = berlinHour(now);
   const quiet = localHour < 8 || localHour >= 20;
   if(quiet){
     console.log('[reminders] Ruhezeit – kein Versand.');
@@ -32,7 +32,8 @@ exports.handler = async ()=>{
     const all = await sheetReadAll();
     for(const a of all){
       if(!a.date || !a.time || !a.email) continue;
-      const apptTime = new Date(a.date+'T'+a.time+':00').getTime();
+      if(a.status==='cancelled') continue; // abgesagte Termine bekommen keine Erinnerung
+      const apptTime = berlinLocalToUtcMs(a.date, a.time);
       if(isNaN(apptTime) || apptTime < now) continue; // vergangen
       results.checked++;
 

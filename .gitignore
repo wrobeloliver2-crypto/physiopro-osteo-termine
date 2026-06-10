@@ -10,3 +10,4 @@ node_modules/
 .netlify/
 *.log
 .DS_Store
+send-test-mails.js

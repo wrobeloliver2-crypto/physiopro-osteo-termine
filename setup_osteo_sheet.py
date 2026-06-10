@@ -55,6 +55,7 @@ headers = [[
     "id", "createdAt", "firstName", "lastName", "email", "cc", "phone",
     "date", "time", "practitioner", "note",
     "confirmSent", "reminder3dSent", "reminder24hSent",
+    "status", "cancelledAt",
 ]]
 ws.values().update(
     spreadsheetId=SHEET_ID,
@@ -62,7 +63,7 @@ ws.values().update(
     valueInputOption="RAW",
     body={"values": headers},
 ).execute()
-print("Kopfzeile geschrieben (14 Spalten) ✓")
+print("Kopfzeile geschrieben (16 Spalten) ✓")
 print("\nFertig. Das Sheet ist startklar.")
 print("Diese SHEET_ID in Netlify als Variable SHEET_ID hinterlegen:")
 print("  " + SHEET_ID)

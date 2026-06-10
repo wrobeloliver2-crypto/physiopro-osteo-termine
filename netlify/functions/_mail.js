@@ -67,8 +67,8 @@ function apptBlock(a, dateStr, timeStr){
       <div style="font-size:16px;font-weight:600;color:#3f5648;margin:2px 0 12px">${dateStr} · ${timeStr}</div>
       <div style="font-size:13px;color:#7a766d">Behandler:in</div>
       <div style="font-size:15px;font-weight:600;color:#3f5648;margin:2px 0 12px">${esc(a.practitioner||'PhysioPro Team')}</div>
-      <div style="font-size:13px;color:#7a766d">Dauer &amp; Preis</div>
-      <div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">60 Minuten · 120 €</div>
+      <div style="font-size:13px;color:#7a766d">Behandlung</div>
+      <div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">Osteopathie · 60 Minuten</div>
     </td></tr></table>`;
 }
 function fmtParts(a){
@@ -89,13 +89,15 @@ function confirmationHtml(a){
     </p>
     ${apptBlock(a, long, time)}
     <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
-      <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage</div>
+      <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage (Ausfallhonorar)</div>
       <div style="font-size:13px;color:#7a766d;line-height:1.5">
-        Sollten Sie den Termin nicht wahrnehmen können, sagen Sie bitte bis spätestens
-        <strong>24 Stunden vorher</strong> ab – telefonisch unter
-        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail.
-        Bei späterer Absage oder Nichterscheinen müssen wir leider eine Ausfallgebühr von
-        <strong>96 € (80 %)</strong> berechnen, da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann.
+        Termine, die nicht mindestens <strong>24 Stunden</strong> vor Behandlungsbeginn abgesagt werden,
+        werden mit dem <strong>vollen Behandlungshonorar</strong> als Ausfallhonorar in Rechnung gestellt,
+        da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann. Dieses Ausfallhonorar
+        ist von privaten Krankenversicherungen und Beihilfestellen in der Regel nicht erstattungsfähig.
+        Absagen nehmen wir gerne entgegen – telefonisch unter
+        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an
+        <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.
       </div>
     </div>
     <p style="margin:0 0 6px;font-size:14px;line-height:1.55">
@@ -121,8 +123,10 @@ function reminder3dHtml(a){
       <div style="font-size:13px;color:#7a766d;line-height:1.5">
         Falls Ihnen der Termin nicht mehr passt, geben Sie uns bitte bis spätestens
         <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter
-        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail.
-        So können wir den Platz noch anderweitig vergeben. Bei späterer Absage entsteht eine Ausfallgebühr von <strong>96 €</strong>.
+        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an
+        <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.
+        So können wir den Platz noch anderweitig vergeben. Bei späterer Absage wird das
+        <strong>volle Behandlungshonorar</strong> als Ausfallhonorar berechnet.
       </div>
     </div>
     <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Bis bald!<br>Ihr PhysioPro-Team</p>`;
@@ -146,4 +150,40 @@ function reminder24hHtml(a){
   return mailShell('Terminerinnerung', inner);
 }
 
-module.exports = { sendMail, confirmationHtml, reminder3dHtml, reminder24hHtml };
+// Absage-/Stornobestätigung. lateNotice = true, wenn <24h vor Termin (Ausfallhonorar-Prüfung).
+function cancellationHtml(a, lateNotice){
+  const {long, time} = fmtParts(a);
+  const noticeBox = lateNotice
+    ? `<div style="background:#f6ede9;border-left:3px solid #b07d3f;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+        <div style="font-size:13px;font-weight:600;color:#8a5a2b;margin-bottom:6px">Hinweis zum Ausfallhonorar</div>
+        <div style="font-size:13px;color:#7a766d;line-height:1.5">
+          Ihre Absage erreicht uns <strong>weniger als 24 Stunden</strong> vor dem Termin. Gemäß der mit Ihnen
+          getroffenen Honorarvereinbarung kann in diesem Fall das <strong>volle Behandlungshonorar</strong> als
+          Ausfallhonorar berechnet werden, sofern der reservierte Zeitraum nicht mehr anderweitig vergeben werden kann.
+          Wir prüfen das im Einzelfall und melden uns gegebenenfalls bei Ihnen.
+        </div>
+      </div>`
+    : `<div style="background:#eaf0ec;border-left:3px solid #55725e;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+        <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Kostenfreie Absage</div>
+        <div style="font-size:13px;color:#7a766d;line-height:1.5">
+          Ihre Absage ist rechtzeitig (mehr als 24 Stunden vor dem Termin) bei uns eingegangen –
+          es entstehen <strong>keine Kosten</strong>. Vielen Dank für die frühzeitige Information.
+        </div>
+      </div>`;
+  const inner = `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
+      wir bestätigen die Absage Ihres folgenden Osteopathie-Termins:
+    </p>
+    ${apptBlock(a, long, time)}
+    ${noticeBox}
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.55">
+      Gerne vereinbaren wir einen neuen Termin mit Ihnen – melden Sie sich einfach telefonisch unter
+      <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail an
+      <a href="mailto:info@physioproluebeck.de" style="color:#55725e">info@physioproluebeck.de</a>.
+    </p>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Ihr PhysioPro-Team</p>`;
+  return mailShell('Terminabsage', inner);
+}
+
+module.exports = { sendMail, confirmationHtml, reminder3dHtml, reminder24hHtml, cancellationHtml };

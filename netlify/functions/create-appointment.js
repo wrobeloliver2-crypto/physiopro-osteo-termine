@@ -15,12 +15,13 @@ exports.handler = async (event)=>{
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
-    // Zeile gemäß HEADERS-Reihenfolge
+    // Zeile gemäß HEADERS-Reihenfolge (16 Spalten)
     const row = [
       id, createdAt, a.firstName, a.lastName, a.email,
       a.cc||'+49', a.phone, a.date, a.time,
       a.practitioner||'', a.note||'',
-      '0','0','0'  // confirmSent, reminder3dSent, reminder24hSent
+      '0','0','0',  // confirmSent, reminder3dSent, reminder24hSent
+      'active', ''  // status, cancelledAt
     ];
     await sheetAppend(row);
 

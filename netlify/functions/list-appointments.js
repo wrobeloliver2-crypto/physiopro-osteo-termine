@@ -7,8 +7,9 @@ exports.handler = async (event)=>{
     // Nur relevante Felder ans Frontend
     const appointments = all.map(a=>({
       id:a.id, firstName:a.firstName, lastName:a.lastName, email:a.email,
-      date:a.date, time:a.time, practitioner:a.practitioner,
-      confirmSent:a.confirmSent, reminder3dSent:a.reminder3dSent, reminder24hSent:a.reminder24hSent
+      cc:a.cc, phone:a.phone, date:a.date, time:a.time, practitioner:a.practitioner,
+      confirmSent:a.confirmSent, reminder3dSent:a.reminder3dSent, reminder24hSent:a.reminder24hSent,
+      status:a.status||'active', cancelledAt:a.cancelledAt||''
     }));
     return resp(200,{appointments});
   }catch(e){
