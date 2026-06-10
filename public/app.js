@@ -18,7 +18,11 @@ function gotoApp(){
 
 if(TOKEN){ gotoApp(); }
 
-document.getElementById('loginBtn').onclick = async ()=>{
+document.getElementById('loginBtn').onclick = doLogin;
+document.getElementById('pin').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); doLogin(); }
+});
+async function doLogin(){
   const pin = document.getElementById('pin').value.trim();
   const msg = document.getElementById('loginMsg');
   if(!pin){ return; }
@@ -50,6 +54,16 @@ document.querySelectorAll('.tab').forEach(t=>{
   };
 });
 
+// === Terminart-Auswahl ===
+let selectedType = '';
+document.querySelectorAll('.typebtn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    selectedType = b.dataset.type;
+  };
+});
+
 // === Termin anlegen ===
 document.getElementById('submitBtn').onclick = async ()=>{
   const msg = document.getElementById('formMsg');
@@ -59,7 +73,8 @@ document.getElementById('submitBtn').onclick = async ()=>{
     firstName: val('firstName'), lastName: val('lastName'),
     email: val('email'), cc: val('cc'), phone: val('phone').replace(/\D/g,''),
     date: val('date'), time: val('time'),
-    practitioner: val('practitioner'), note: val('note')
+    practitioner: val('practitioner'), note: val('note'),
+    type: selectedType
   };
 
   // Validierung
@@ -87,6 +102,7 @@ document.getElementById('submitBtn').onclick = async ()=>{
 
 function val(id){ return document.getElementById(id).value.trim(); }
 function validate(d){
+  if(!d.type) return 'Bitte zuerst die Terminart wählen.';
   if(!d.firstName||!d.lastName) return 'Bitte Vor- und Nachname angeben.';
   if(!/^[^@]+@[^@]+\.[^@]+$/.test(d.email)) return 'Bitte gültige E-Mail angeben.';
   if(!d.date||!d.time) return 'Bitte Datum und Uhrzeit angeben.';
@@ -96,6 +112,8 @@ function validate(d){
 }
 function clearForm(){
   ['firstName','lastName','email','phone','note'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.typebtn').forEach(x=>x.classList.remove('active'));
+  selectedType = '';
 }
 
 // === Bestätigungs-Overlay (auto-close nach 2,5 s) ===
@@ -150,7 +168,7 @@ function renderList(appts){
     const free=hoursUntil>=24;
     return `<div class="appt">
       <div class="top"><span class="name">${esc(a.firstName)} ${esc(a.lastName)}</span><span class="when">${when}</span></div>
-      <div class="meta">${esc(a.practitioner||'')} · ${esc(a.email)}</div>
+      <div class="meta">${esc(a.practitioner||'')} · ${a.type==='check'?'Osteo-Check (20 Min)':'Osteopathie (60 Min)'} · ${esc(a.email)}</div>
       <div class="badges">
         ${badge(a.confirmSent,'Bestätigung')}
         ${badge(a.reminder3dSent,'Erinnerung 3 T.')}
