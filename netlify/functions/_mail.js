@@ -16,11 +16,6 @@ async function getGraphToken(){
 }
 
 async function sendMail(to, subject, html){
-  // Sicherheitsschalter: Solange LIVE_MODE nicht "true" ist, wird NICHT real versendet.
-  if(process.env.LIVE_MODE !== 'true'){
-    console.log(`[TESTMODUS] E-Mail NICHT gesendet an ${to} · Betreff: ${subject}`);
-    return { testMode:true };
-  }
   const token = await getGraphToken();
   const sender = process.env.GRAPH_SENDER; // z.B. info@physioproluebeck.de
   const r = await fetch(`https://graph.microsoft.com/v1.0/users/${sender}/sendMail`,{
