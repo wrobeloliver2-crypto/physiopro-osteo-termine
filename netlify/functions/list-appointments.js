@@ -9,7 +9,7 @@ exports.handler = async (event)=>{
       id:a.id, firstName:a.firstName, lastName:a.lastName, email:a.email,
       cc:a.cc, phone:a.phone, date:a.date, time:a.time, practitioner:a.practitioner,
       confirmSent:a.confirmSent, reminder3dSent:a.reminder3dSent, reminder24hSent:a.reminder24hSent,
-      status:a.status||'active', cancelledAt:a.cancelledAt||''
+      status:a.status||'active', cancelledAt:a.cancelledAt||'', type:a.type||'osteo'
     }));
     return resp(200,{appointments});
   }catch(e){
