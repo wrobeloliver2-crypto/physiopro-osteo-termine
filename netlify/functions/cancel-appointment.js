@@ -25,9 +25,11 @@ exports.handler = async (event)=>{
 
     // Absage-Mail senden (im Testmodus nur Log)
     let mailOk = false;
+    const betreff = (appt.type==='check')
+      ? 'Absage Ihres Osteopathie-Checks bei PhysioPro Lübeck'
+      : 'Absage Ihres Osteopathie-Termins bei PhysioPro Lübeck';
     try{
-      await sendMail(appt.email, 'Absage Ihres Osteopathie-Termins bei PhysioPro Lübeck',
-        cancellationHtml(appt, lateNotice));
+      await sendMail(appt.email, betreff, cancellationHtml(appt, lateNotice));
       mailOk = true;
     }catch(e){ console.error('Absage-Mail:', e.message); }
 
