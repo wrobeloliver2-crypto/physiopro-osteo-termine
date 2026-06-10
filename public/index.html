@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhysioPro · Osteopathie-Termine</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#55725e">
+<style>
+  :root{
+    --green:#55725e; --green-dark:#3f5648; --beige:#c4b09a; --cream:#faf8f4;
+    --ink:#2b2b28; --muted:#7a766d; --line:#e5ddd0; --white:#fff;
+    --ok:#55725e; --warn:#b07d3f; --err:#a3473e;
+    --radius:14px; --shadow:0 2px 14px rgba(63,86,72,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--cream);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  header{background:var(--green);color:var(--cream);padding:18px 22px;display:flex;
+    align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  header h1{font-size:1.05rem;margin:0;font-weight:600;letter-spacing:.2px}
+  header .sub{font-size:.78rem;opacity:.8;font-weight:400}
+  .wrap{max-width:760px;margin:0 auto;padding:22px 16px 80px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+  .card h2{font-size:1rem;margin:0 0 16px;color:var(--green-dark);font-weight:600}
+  label{display:block;font-size:.82rem;font-weight:600;color:var(--green-dark);margin:0 0 5px}
+  .hint{font-size:.74rem;color:var(--muted);font-weight:400;margin-top:3px}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:.95rem;font-family:inherit;background:var(--cream);color:var(--ink);margin-bottom:14px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:-1px;background:#fff}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  @media(max-width:520px){.row{grid-template-columns:1fr}}
+  .phone-row{display:grid;grid-template-columns:90px 1fr;gap:0 10px}
+  .consent{display:flex;gap:10px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);
+    border-radius:10px;padding:13px;margin-bottom:6px}
+  .consent input{width:auto;margin:3px 0 0;flex:none}
+  .consent label{font-weight:400;font-size:.84rem;color:var(--ink);margin:0}
+  .policy{font-size:.78rem;color:var(--muted);background:#f3ede2;border-left:3px solid var(--beige);
+    padding:10px 12px;border-radius:0 8px 8px 0;margin:0 0 16px;line-height:1.45}
+  button.primary{background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;
+    font-size:.98rem;font-weight:600;width:100%;cursor:pointer;transition:background .15s}
+  button.primary:hover{background:var(--green-dark)}
+  button.primary:disabled{opacity:.5;cursor:not-allowed}
+  .msg{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-bottom:14px;display:none}
+  .msg.ok{background:#eaf0ec;color:var(--green-dark);border:1px solid #cbddd0;display:block}
+  .msg.err{background:#f6e9e7;color:var(--err);border:1px solid #e8c9c4;display:block}
+  /* Liste */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+  .tile{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+  .tile .n{font-size:1.6rem;font-weight:700;color:var(--green)}
+  .tile .l{font-size:.74rem;color:var(--muted);margin-top:2px}
+  .appt{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff}
+  .appt .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .appt .name{font-weight:600;color:var(--green-dark)}
+  .appt .when{font-size:.82rem;color:var(--muted)}
+  .appt .meta{font-size:.8rem;color:var(--muted);margin-top:4px}
+  .badges{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .badge{font-size:.7rem;padding:3px 9px;border-radius:20px;font-weight:600;border:1px solid}
+  .badge.done{background:#eaf0ec;color:var(--green-dark);border-color:#cbddd0}
+  .badge.wait{background:#f3ede2;color:var(--muted);border-color:var(--line)}
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{flex:1;padding:11px;text-align:center;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;font-weight:600;font-size:.88rem;color:var(--muted)}
+  .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:.88rem}
+  .loginbox{max-width:380px;margin:60px auto;text-align:center}
+  .loginbox .card{padding:30px 24px}
+  /* Bestätigungs-Overlay */
+  .toast-overlay{position:fixed;inset:0;background:rgba(43,43,40,.28);display:flex;align-items:center;
+    justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast-overlay.show{opacity:1;pointer-events:auto}
+  .toast-card{background:#fff;border-radius:18px;padding:30px 34px;text-align:center;max-width:300px;
+    box-shadow:0 12px 40px rgba(63,86,72,.25);transform:scale(.92);transition:transform .22s}
+  .toast-overlay.show .toast-card{transform:scale(1)}
+  .toast-check{width:58px;height:58px;border-radius:50%;background:#eaf0ec;margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center}
+  .toast-check svg{width:30px;height:30px}
+  .toast-check circle{fill:none;stroke:#55725e;stroke-width:2.5;stroke-dasharray:151;stroke-dashoffset:151;
+    animation:draw .4s ease forwards}
+  .toast-check path{fill:none;stroke:#55725e;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:40;stroke-dashoffset:40;animation:draw .35s .25s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .toast-title{font-size:1.02rem;font-weight:600;color:var(--green-dark);margin-bottom:4px}
+  .toast-sub{font-size:.84rem;color:var(--muted);line-height:1.4}
+  @media(prefers-reduced-motion:reduce){
+    .toast-overlay,.toast-card{transition:none}
+    .toast-check circle,.toast-check path{animation:none;stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PhysioPro · Osteopathie</h1>
+    <div class="sub">Terminerfassung & Erinnerungen</div>
+  </div>
+</header>
+
+<div class="wrap" id="app" style="display:none">
+  <div class="tabs">
+    <div class="tab active" data-tab="new">Neuer Termin</div>
+    <div class="tab" data-tab="list">Termine</div>
+  </div>
+
+  <!-- NEUER TERMIN -->
+  <section id="tab-new">
+    <div class="card">
+      <h2>Patient & Termin erfassen</h2>
+      <div class="msg" id="formMsg"></div>
+
+      <div class="row">
+        <div><label>Vorname *</label><input id="firstName" autocomplete="off"></div>
+        <div><label>Nachname *</label><input id="lastName" autocomplete="off"></div>
+      </div>
+
+      <label>E-Mail *</label>
+      <input id="email" type="email" autocomplete="off" placeholder="patient@example.de">
+
+      <label>Handynummer</label>
+      <div class="phone-row">
+        <input id="cc" value="+49" maxlength="5">
+        <input id="phone" inputmode="numeric" placeholder="151 23456789">
+      </div>
+      <div class="hint" style="margin-top:-10px;margin-bottom:14px">Optional. Ohne führende 0.</div>
+
+      <div class="row">
+        <div><label>Datum *</label><input id="date" type="date"></div>
+        <div><label>Uhrzeit *</label><input id="time" type="time" value="09:00"></div>
+      </div>
+
+      <label>Behandler:in</label>
+      <select id="practitioner">
+        <option>Julia Mielke</option>
+        <option>Hanna Wrobel</option>
+      </select>
+
+      <label>Notiz (intern)</label>
+      <textarea id="note" rows="2" placeholder="optional"></textarea>
+
+      <button class="primary" id="submitBtn" style="margin-top:16px">Termin anlegen & Bestätigung per E-Mail senden</button>
+    </div>
+  </section>
+
+  <!-- LISTE -->
+  <section id="tab-list" style="display:none">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <h2>Anstehende Termine</h2>
+      <div id="apptList"><div class="empty">Wird geladen…</div></div>
+    </div>
+  </section>
+</div>
+
+<!-- LOGIN -->
+<div class="loginbox" id="login">
+  <div class="card">
+    <h2 style="text-align:center">Anmeldung</h2>
+    <p style="font-size:.86rem;color:var(--muted);margin-top:0">Zugangscode eingeben.</p>
+    <input id="pin" type="password" placeholder="Code" style="text-align:center">
+    <button class="primary" id="loginBtn">Anmelden</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+</div>
+
+<div class="toast-overlay" id="toast">
+  <div class="toast-card">
+    <div class="toast-check">
+      <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M16 27l7 7 13-14"/></svg>
+    </div>
+    <div class="toast-title">Bestätigung gesendet</div>
+    <div class="toast-sub" id="toastSub">an die angegebene E-Mail-Adresse</div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

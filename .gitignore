@@ -1,0 +1,12 @@
+# Echte Umgebungsvariablen NIEMALS committen
+.env
+.env.local
+.env.*.local
+
+# Abhängigkeiten
+node_modules/
+
+# Build-/Temp
+.netlify/
+*.log
+.DS_Store

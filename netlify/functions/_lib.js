@@ -1,0 +1,109 @@
+// Gemeinsame Helfer für alle Functions
+const crypto = require('crypto');
+
+// ---------- Auth ----------
+// Einfacher signierter Token (HMAC). Kein User-System nötig – nur Team-PIN.
+function signToken(secret){
+  const payload = `team.${Date.now()}`;
+  const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return Buffer.from(payload+'|'+sig).toString('base64');
+}
+function verifyToken(token, secret){
+  try{
+    const raw = Buffer.from(token,'base64').toString();
+    const [payload, sig] = raw.split('|');
+    const expect = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    if(sig !== expect) return false;
+    // Optional: Ablauf nach 30 Tagen
+    const ts = Number(payload.split('.')[1]);
+    if(Date.now() - ts > 30*24*3600*1000) return false;
+    return true;
+  }catch(e){ return false; }
+}
+function requireAuth(event){
+  const h = event.headers.authorization || event.headers.Authorization || '';
+  const token = h.replace('Bearer ','');
+  return verifyToken(token, process.env.AUTH_SECRET);
+}
+
+// ---------- Google Sheets via Service Account ----------
+// Wir nutzen die REST-API mit JWT-Bearer (kein npm-Paket nötig außer für JWT-Signatur).
+async function getGoogleAccessToken(){
+  const email = process.env.GOOGLE_CLIENT_EMAIL;
+  const key = (process.env.GOOGLE_PRIVATE_KEY||'').replace(/\\n/g,'\n');
+  const now = Math.floor(Date.now()/1000);
+  const header = b64url(JSON.stringify({alg:'RS256',typ:'JWT'}));
+  const claim = b64url(JSON.stringify({
+    iss: email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now, exp: now+3600
+  }));
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(header+'.'+claim);
+  const sig = signer.sign(key);
+  const jwt = header+'.'+claim+'.'+b64url(sig);
+  const r = await fetch('https://oauth2.googleapis.com/token',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+  });
+  const d = await r.json();
+  if(!d.access_token) throw new Error('Google token: '+JSON.stringify(d));
+  return d.access_token;
+}
+function b64url(input){
+  return Buffer.from(input).toString('base64')
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+const SHEET_ID = () => process.env.SHEET_ID;
+const RANGE = 'Termine!A:N';
+const HEADERS = ['id','createdAt','firstName','lastName','email','cc','phone',
+  'date','time','practitioner','note','confirmSent','reminder3dSent','reminder24hSent'];
+
+async function sheetAppend(row){
+  const token = await getGoogleAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(RANGE)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  const r = await fetch(url,{
+    method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({values:[row]})
+  });
+  if(!r.ok) throw new Error('Sheet append: '+await r.text());
+  return r.json();
+}
+
+async function sheetReadAll(){
+  const token = await getGoogleAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(RANGE)}`;
+  const r = await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+  if(!r.ok) throw new Error('Sheet read: '+await r.text());
+  const d = await r.json();
+  const rows = d.values||[];
+  if(rows.length<2) return [];
+  return rows.slice(1).map((row,i)=>{
+    const obj={_rowIndex:i+2}; // 1-basiert + Headerzeile
+    HEADERS.forEach((h,j)=> obj[h] = row[j]||'');
+    ['confirmSent','reminder3dSent','reminder24hSent'].forEach(k=> obj[k]= obj[k]==='1');
+    return obj;
+  });
+}
+
+async function sheetUpdateCell(rowIndex, colLetter, value){
+  const token = await getGoogleAccessToken();
+  const range = `Termine!${colLetter}${rowIndex}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const r = await fetch(url,{
+    method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({values:[[value]]})
+  });
+  if(!r.ok) throw new Error('Sheet update: '+await r.text());
+}
+
+// Spaltenbuchstaben für Status
+const COL = { confirmSent:'L', reminder3dSent:'M', reminder24hSent:'N' };
+
+module.exports = {
+  signToken, verifyToken, requireAuth,
+  sheetAppend, sheetReadAll, sheetUpdateCell,
+  HEADERS, COL
+};

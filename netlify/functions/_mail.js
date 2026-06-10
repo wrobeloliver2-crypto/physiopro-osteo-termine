@@ -1,0 +1,149 @@
+// E-Mail-Versand via Microsoft Graph (Client Credentials)
+async function getGraphToken(){
+  const tenant = process.env.GRAPH_TENANT_ID;
+  const r = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({
+      client_id: process.env.GRAPH_CLIENT_ID,
+      client_secret: process.env.GRAPH_CLIENT_SECRET,
+      scope:'https://graph.microsoft.com/.default',
+      grant_type:'client_credentials'
+    })
+  });
+  const d = await r.json();
+  if(!d.access_token) throw new Error('Graph token: '+JSON.stringify(d));
+  return d.access_token;
+}
+
+async function sendMail(to, subject, html){
+  // Sicherheitsschalter: Solange LIVE_MODE nicht "true" ist, wird NICHT real versendet.
+  if(process.env.LIVE_MODE !== 'true'){
+    console.log(`[TESTMODUS] E-Mail NICHT gesendet an ${to} · Betreff: ${subject}`);
+    return { testMode:true };
+  }
+  const token = await getGraphToken();
+  const sender = process.env.GRAPH_SENDER; // z.B. info@physioproluebeck.de
+  const r = await fetch(`https://graph.microsoft.com/v1.0/users/${sender}/sendMail`,{
+    method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({
+      message:{
+        subject,
+        body:{contentType:'HTML',content:html},
+        toRecipients:[{emailAddress:{address:to}}]
+      },
+      saveToSentItems:true
+    })
+  });
+  if(!r.ok) throw new Error('sendMail: '+await r.text());
+}
+
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// Gemeinsames Mail-Gerüst (Header/Footer im PhysioPro-Style)
+function mailShell(subtitle, inner){
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"></head>
+<body style="margin:0;background:#faf8f4;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2b28">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;padding:24px 0"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid #e5ddd0;border-radius:14px;overflow:hidden">
+  <tr><td style="background:#55725e;padding:26px 30px">
+    <div style="color:#faf8f4;font-size:18px;font-weight:600">PhysioPro Lübeck</div>
+    <div style="color:#c4b09a;font-size:13px;margin-top:2px">Osteopathie · ${subtitle}</div>
+  </td></tr>
+  <tr><td style="padding:30px">${inner}</td></tr>
+  <tr><td style="background:#faf8f4;border-top:1px solid #e5ddd0;padding:18px 30px">
+    <div style="font-size:12px;color:#7a766d;line-height:1.5">
+      PhysioPro Lübeck · Hanna Wrobel · Segeberger Str. 1 · 23617 Stockelsdorf<br>
+      0451 / 400 730 73 · info@physioproluebeck.de · physioproluebeck.de
+    </div>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+// Wiederverwendbarer Termin-Block
+function apptBlock(a, dateStr, timeStr){
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;border:1px solid #e5ddd0;border-radius:12px;margin-bottom:22px">
+    <tr><td style="padding:18px 20px">
+      <div style="font-size:13px;color:#7a766d">Datum &amp; Uhrzeit</div>
+      <div style="font-size:16px;font-weight:600;color:#3f5648;margin:2px 0 12px">${dateStr} · ${timeStr}</div>
+      <div style="font-size:13px;color:#7a766d">Behandler:in</div>
+      <div style="font-size:15px;font-weight:600;color:#3f5648;margin:2px 0 12px">${esc(a.practitioner||'PhysioPro Team')}</div>
+      <div style="font-size:13px;color:#7a766d">Dauer &amp; Preis</div>
+      <div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">60 Minuten · 120 €</div>
+    </td></tr></table>`;
+}
+function fmtParts(a){
+  const dt=new Date(a.date+'T'+a.time);
+  return {
+    long: dt.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}),
+    time: a.time+' Uhr'
+  };
+}
+
+// Terminbestätigung
+function confirmationHtml(a){
+  const {long, time} = fmtParts(a);
+  const inner = `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
+      vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Osteopathie-Termin:
+    </p>
+    ${apptBlock(a, long, time)}
+    <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+      <div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage</div>
+      <div style="font-size:13px;color:#7a766d;line-height:1.5">
+        Sollten Sie den Termin nicht wahrnehmen können, sagen Sie bitte bis spätestens
+        <strong>24 Stunden vorher</strong> ab – telefonisch unter
+        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail.
+        Bei späterer Absage oder Nichterscheinen müssen wir leider eine Ausfallgebühr von
+        <strong>96 € (80 %)</strong> berechnen, da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann.
+      </div>
+    </div>
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.55">
+      Zur Sicherheit erhalten Sie <strong>3 Tage</strong> und <strong>24 Stunden</strong> vor dem Termin
+      noch eine kurze Erinnerung per E-Mail.
+    </p>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">
+      Wir freuen uns auf Ihren Besuch.<br>Ihr PhysioPro-Team
+    </p>`;
+  return mailShell('Terminbestätigung', inner);
+}
+
+// Erinnerung 3 Tage vorher
+function reminder3dHtml(a){
+  const {long, time} = fmtParts(a);
+  const inner = `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
+      wir möchten Sie an Ihren bevorstehenden Osteopathie-Termin erinnern:
+    </p>
+    ${apptBlock(a, long, time)}
+    <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+      <div style="font-size:13px;color:#7a766d;line-height:1.5">
+        Falls Ihnen der Termin nicht mehr passt, geben Sie uns bitte bis spätestens
+        <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter
+        <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail.
+        So können wir den Platz noch anderweitig vergeben. Bei späterer Absage entsteht eine Ausfallgebühr von <strong>96 €</strong>.
+      </div>
+    </div>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Bis bald!<br>Ihr PhysioPro-Team</p>`;
+  return mailShell('Terminerinnerung', inner);
+}
+
+// Erinnerung 24 Stunden vorher
+function reminder24hHtml(a){
+  const {long, time} = fmtParts(a);
+  const inner = `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">
+      kurze Erinnerung: Ihr Osteopathie-Termin findet <strong>morgen</strong> statt.
+    </p>
+    ${apptBlock(a, long, time)}
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.55">
+      Wir freuen uns auf Sie! Falls etwas dazwischenkommt, melden Sie sich bitte umgehend telefonisch
+      unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a>.
+    </p>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Ihr PhysioPro-Team</p>`;
+  return mailShell('Terminerinnerung', inner);
+}
+
+module.exports = { sendMail, confirmationHtml, reminder3dHtml, reminder24hHtml };

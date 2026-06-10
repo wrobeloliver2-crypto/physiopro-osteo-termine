@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhysioPro · Osteopathie-Termine (DEMO)</title>
+<style>
+  :root{
+    --green:#55725e; --green-dark:#3f5648; --beige:#c4b09a; --cream:#faf8f4;
+    --ink:#2b2b28; --muted:#7a766d; --line:#e5ddd0; --white:#fff;
+    --ok:#55725e; --warn:#b07d3f; --err:#a3473e;
+    --radius:14px; --shadow:0 2px 14px rgba(63,86,72,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--cream);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .demobar{background:#b07d3f;color:#fff;text-align:center;font-size:.78rem;padding:7px 12px;font-weight:600;letter-spacing:.3px}
+  header{background:var(--green);color:var(--cream);padding:18px 22px;display:flex;
+    align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  header h1{font-size:1.05rem;margin:0;font-weight:600;letter-spacing:.2px}
+  header .sub{font-size:.78rem;opacity:.8;font-weight:400}
+  .wrap{max-width:760px;margin:0 auto;padding:22px 16px 80px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+  .card h2{font-size:1rem;margin:0 0 16px;color:var(--green-dark);font-weight:600}
+  label{display:block;font-size:.82rem;font-weight:600;color:var(--green-dark);margin:0 0 5px}
+  .hint{font-size:.74rem;color:var(--muted);font-weight:400;margin-top:3px}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:.95rem;font-family:inherit;background:var(--cream);color:var(--ink);margin-bottom:14px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:-1px;background:#fff}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  @media(max-width:520px){.row{grid-template-columns:1fr}}
+  .phone-row{display:grid;grid-template-columns:90px 1fr;gap:0 10px}
+  .consent{display:flex;gap:10px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);
+    border-radius:10px;padding:13px;margin-bottom:6px}
+  .consent input{width:auto;margin:3px 0 0;flex:none}
+  .consent label{font-weight:400;font-size:.84rem;color:var(--ink);margin:0}
+  .policy{font-size:.78rem;color:var(--muted);background:#f3ede2;border-left:3px solid var(--beige);
+    padding:10px 12px;border-radius:0 8px 8px 0;margin:0 0 16px;line-height:1.45}
+  button.primary{background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;
+    font-size:.98rem;font-weight:600;width:100%;cursor:pointer;transition:background .15s}
+  button.primary:hover{background:var(--green-dark)}
+  button.primary:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:#fff;color:var(--green-dark);border:1px solid var(--line);border-radius:10px;
+    padding:9px 13px;font-size:.82rem;font-weight:600;cursor:pointer}
+  button.ghost:hover{background:var(--cream)}
+  .msg{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-bottom:14px;display:none}
+  .msg.ok{background:#eaf0ec;color:var(--green-dark);border:1px solid #cbddd0;display:block}
+  .msg.err{background:#f6e9e7;color:var(--err);border:1px solid #e8c9c4;display:block}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+  .tile{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+  .tile .n{font-size:1.6rem;font-weight:700;color:var(--green)}
+  .tile .l{font-size:.74rem;color:var(--muted);margin-top:2px}
+  .appt{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff}
+  .appt .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .appt .name{font-weight:600;color:var(--green-dark)}
+  .appt .when{font-size:.82rem;color:var(--muted)}
+  .appt .meta{font-size:.8rem;color:var(--muted);margin-top:4px}
+  .badges{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .badge{font-size:.7rem;padding:3px 9px;border-radius:20px;font-weight:600;border:1px solid}
+  .badge.done{background:#eaf0ec;color:var(--green-dark);border-color:#cbddd0}
+  .badge.wait{background:#f3ede2;color:var(--muted);border-color:var(--line)}
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .tab{flex:1;min-width:90px;padding:11px;text-align:center;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;font-weight:600;font-size:.86rem;color:var(--muted)}
+  .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:.88rem}
+  /* Outbox */
+  .ob{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .ob-head{display:flex;justify-content:space-between;align-items:center;padding:11px 15px;cursor:pointer;background:#fff}
+  .ob-head:hover{background:var(--cream)}
+  .ob-type{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:6px;letter-spacing:.4px}
+  .ob-type.mail{background:#eaf0ec;color:var(--green-dark)}
+  .ob-type.wa{background:#e3f0e6;color:#1f6b3a}
+  .ob-to{font-size:.84rem;color:var(--ink);font-weight:600}
+  .ob-sub{font-size:.76rem;color:var(--muted)}
+  .ob-time{font-size:.72rem;color:var(--muted)}
+  .ob-body{display:none;border-top:1px solid var(--line);padding:0;background:#faf8f4}
+  .ob-body.open{display:block}
+  .wa-bubble{background:#dcf8c6;border-radius:10px;padding:12px 14px;margin:14px;font-size:.86rem;line-height:1.5;white-space:pre-wrap}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .clock{font-size:.8rem;color:var(--muted);background:var(--cream);border:1px solid var(--line);
+    border-radius:8px;padding:8px 11px;margin-bottom:14px}
+  .clock b{color:var(--green-dark)}
+  .seedbtn{margin-top:4px}
+  iframe.mailframe{width:100%;border:0;background:#faf8f4;height:640px}
+  /* Bestätigungs-Overlay */
+  .toast-overlay{position:fixed;inset:0;background:rgba(43,43,40,.28);display:flex;align-items:center;
+    justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast-overlay.show{opacity:1;pointer-events:auto}
+  .toast-card{background:#fff;border-radius:18px;padding:30px 34px;text-align:center;max-width:300px;
+    box-shadow:0 12px 40px rgba(63,86,72,.25);transform:scale(.92);transition:transform .22s}
+  .toast-overlay.show .toast-card{transform:scale(1)}
+  .toast-check{width:58px;height:58px;border-radius:50%;background:#eaf0ec;margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center}
+  .toast-check svg{width:30px;height:30px}
+  .toast-check circle{fill:none;stroke:#55725e;stroke-width:2.5;stroke-dasharray:151;stroke-dashoffset:151;
+    animation:draw .4s ease forwards}
+  .toast-check path{fill:none;stroke:#55725e;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:40;stroke-dashoffset:40;animation:draw .35s .25s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .toast-title{font-size:1.02rem;font-weight:600;color:var(--green-dark);margin-bottom:4px}
+  .toast-sub{font-size:.84rem;color:var(--muted);line-height:1.4}
+  @media(prefers-reduced-motion:reduce){
+    .toast-overlay,.toast-card{transition:none}
+    .toast-check circle,.toast-check path{animation:none;stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+<div class="demobar">DEMO-MODUS · Es werden KEINE echten E-Mails versendet · Alles läuft nur im Browser</div>
+<header>
+  <div>
+    <h1>PhysioPro · Osteopathie</h1>
+    <div class="sub">Terminerfassung & Erinnerungen</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-tab="new">Neuer Termin</div>
+    <div class="tab" data-tab="list">Termine</div>
+    <div class="tab" data-tab="outbox">Outbox <span id="obCount"></span></div>
+    <div class="tab" data-tab="sim">Zeit & Test</div>
+  </div>
+
+  <!-- NEUER TERMIN -->
+  <section id="tab-new">
+    <div class="card">
+      <h2>Patient & Termin erfassen</h2>
+      <div class="msg" id="formMsg"></div>
+      <div class="row">
+        <div><label>Vorname *</label><input id="firstName" autocomplete="off"></div>
+        <div><label>Nachname *</label><input id="lastName" autocomplete="off"></div>
+      </div>
+      <label>E-Mail *</label>
+      <input id="email" type="email" autocomplete="off" placeholder="patient@example.de">
+      <label>Handynummer</label>
+      <div class="phone-row">
+        <input id="cc" value="+49" maxlength="5">
+        <input id="phone" inputmode="numeric" placeholder="151 23456789">
+      </div>
+      <div class="hint" style="margin-top:-10px;margin-bottom:14px">Optional. Ohne führende 0.</div>
+      <div class="row">
+        <div><label>Datum *</label><input id="date" type="date"></div>
+        <div><label>Uhrzeit *</label><input id="time" type="time" value="09:00"></div>
+      </div>
+      <label>Behandler:in</label>
+      <select id="practitioner"><option>Julia Mielke</option><option>Hanna Wrobel</option></select>
+      <label>Notiz (intern)</label>
+      <textarea id="note" rows="2" placeholder="optional"></textarea>
+      <button class="primary" id="submitBtn" style="margin-top:16px">Termin anlegen & Bestätigung per E-Mail senden</button>
+    </div>
+  </section>
+
+  <!-- LISTE -->
+  <section id="tab-list" style="display:none">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <h2>Anstehende Termine</h2>
+      <div id="apptList"><div class="empty">Noch keine Termine.</div></div>
+    </div>
+  </section>
+
+  <!-- OUTBOX -->
+  <section id="tab-outbox" style="display:none">
+    <div class="card">
+      <h2>Outbox – was würde gesendet?</h2>
+      <p style="font-size:.84rem;color:var(--muted);margin-top:0">Hier landet jede E-Mail, die im Echtbetrieb rausgehen würde – Bestätigung und Erinnerungen. Zum Aufklappen tippen.</p>
+      <div class="toolbar"><button class="ghost" id="clearOutbox">Outbox leeren</button></div>
+      <div id="outbox"><div class="empty">Noch nichts gesendet.</div></div>
+    </div>
+  </section>
+
+  <!-- SIMULATION -->
+  <section id="tab-sim" style="display:none">
+    <div class="card">
+      <h2>Zeit & Erinnerungstest</h2>
+      <div class="clock">Simulierte Zeit: <b id="simClock"></b></div>
+      <p style="font-size:.84rem;color:var(--muted)">Die Erinnerungen feuern 3 Tage und 24 h vor dem Termin. Statt 3 Tage zu warten, spulst du die simulierte Zeit vor und drückst „Erinnerungslauf". Genau diese Logik läuft später per Cron alle 30 Min.</p>
+      <div class="policy" style="margin-bottom:16px">Wichtig: Die <strong>Bestätigungsmail</strong> (sofort beim Anlegen) enthält bereits die No-Show-Regel – der Patient ist damit in jedem Fall informiert, auch bei kurzfristigster Buchung. Die Erinnerungen sind zusätzlicher Komfort. Wird ein Termin so kurzfristig angelegt, dass ein Erinnerungsfenster schon überschritten ist, holt der nächste Lauf die Mail nach.</div>
+      <div class="toolbar">
+        <button class="ghost" data-skip="1">+1 Stunde</button>
+        <button class="ghost" data-skip="12">+12 Stunden</button>
+        <button class="ghost" data-skip="24">+1 Tag</button>
+        <button class="ghost" data-skip="-24">−1 Tag</button>
+        <button class="ghost" id="resetClock">Jetzt</button>
+      </div>
+      <button class="primary" id="runReminders" style="margin-bottom:14px">Erinnerungslauf jetzt ausführen</button>
+      <div class="msg" id="simMsg"></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+      <h2>Testdaten</h2>
+      <p style="font-size:.84rem;color:var(--muted)">Legt Beispieltermine an (in 3 Tagen, in 25 h, in 10 Tagen), damit du die Kette ohne Tipparbeit durchspielen kannst.</p>
+      <button class="ghost seedbtn" id="seed">Beispieltermine anlegen</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// ====================================================================
+//  DEMO-LOGIK – läuft komplett im Browser, keine externen Aufrufe.
+//  Spiegelt 1:1 die Server-Logik aus den Netlify-Functions wider.
+// ====================================================================
+const CANCEL_FEE=96, PRICE=120, FEE_HOURS=24;
+const THRESHOLD_3D=72, THRESHOLD_24H=24;
+
+// In-Memory-"Datenbank" (kein localStorage – frisch bei jedem Laden)
+let DB = [];        // Termine
+let OUTBOX = [];     // gesendete Nachrichten (Demo)
+let CLOCK_OFFSET = 0; // ms-Verschiebung der simulierten Zeit
+
+function nowSim(){ return Date.now() + CLOCK_OFFSET; }
+
+// ---- Tabs ----
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    ['new','list','outbox','sim'].forEach(name=>{
+      document.getElementById('tab-'+name).style.display = (t.dataset.tab===name)?'':'none';
+    });
+    if(t.dataset.tab==='list') renderList();
+    if(t.dataset.tab==='outbox') renderOutbox();
+    if(t.dataset.tab==='sim') renderClock();
+  };
+});
+
+// ---- Termin anlegen ----
+document.getElementById('submitBtn').onclick = ()=>{
+  const msg=document.getElementById('formMsg'); msg.className='msg'; msg.style.display='none';
+  const a={
+    firstName:val('firstName'), lastName:val('lastName'), email:val('email'),
+    cc:val('cc'), phone:val('phone').replace(/\D/g,''),
+    date:val('date'), time:val('time'),
+    practitioner:val('practitioner'), note:val('note')
+  };
+  const err=validate(a);
+  if(err){ msg.className='msg err'; msg.textContent=err; return; }
+  createAppointment(a);
+  clearForm();
+  showToast(a.email);
+};
+
+// Kurzes Bestätigungs-Overlay (auto-close nach 2,5 s)
+let toastTimer=null;
+function showToast(email){
+  const t=document.getElementById('toast');
+  document.getElementById('toastSub').textContent = email ? ('an '+email) : 'an die angegebene E-Mail-Adresse';
+  // Animation neu starten (falls schnell hintereinander)
+  const check=t.querySelector('.toast-check');
+  check.style.display='none'; void check.offsetWidth; check.style.display='';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'), 2500);
+}
+// Klick aufs Overlay schließt sofort
+document.getElementById('toast').onclick=()=>{ document.getElementById('toast').classList.remove('show'); clearTimeout(toastTimer); };
+
+function createAppointment(a){
+  const rec = {
+    id: 'demo-'+Math.random().toString(36).slice(2,9),
+    createdAt: new Date(nowSim()).toISOString(),
+    ...a,
+    confirmSent:false, reminder3dSent:false, reminder24hSent:false
+  };
+  DB.push(rec);
+  // Bestätigungsmail (Demo -> Outbox)
+  pushOutbox({
+    type:'mail', to:a.email,
+    subject:'Ihr Osteopathie-Termin bei PhysioPro Lübeck',
+    html: confirmationHtml(a), ts: nowSim()
+  });
+  rec.confirmSent=true;
+  updateObCount();
+}
+
+function val(id){ return document.getElementById(id).value.trim(); }
+function validate(d){
+  if(!d.firstName||!d.lastName) return 'Bitte Vor- und Nachname angeben.';
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(d.email)) return 'Bitte gültige E-Mail angeben.';
+  if(!d.date||!d.time) return 'Bitte Datum und Uhrzeit angeben.';
+  if(new Date(d.date+'T'+d.time) < new Date(nowSim())) return 'Der Termin liegt in der Vergangenheit.';
+  return null;
+}
+function clearForm(){
+  ['firstName','lastName','email','phone','note'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ---- Liste ----
+function renderList(){
+  const upcoming = DB.filter(a=>new Date(a.date+'T'+a.time)>=new Date(nowSim()))
+    .sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  document.getElementById('tiles').innerHTML =
+    tile(upcoming.length,'anstehend')+tile(DB.length,'gesamt')+tile(OUTBOX.length,'Outbox');
+  const box=document.getElementById('apptList');
+  if(!upcoming.length){ box.innerHTML='<div class="empty">Keine anstehenden Termine.</div>'; return; }
+  box.innerHTML=upcoming.map(a=>{
+    const dt=new Date(a.date+'T'+a.time);
+    const when=dt.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+a.time;
+    return `<div class="appt">
+      <div class="top"><span class="name">${esc(a.firstName)} ${esc(a.lastName)}</span><span class="when">${when}</span></div>
+      <div class="meta">${esc(a.practitioner||'')} · ${esc(a.email)} · +${esc(a.cc.replace(/\D/g,''))} ${esc(a.phone)}</div>
+      <div class="badges">
+        ${badge(a.confirmSent,'Bestätigung')}${badge(a.reminder3dSent,'3 Tage')}${badge(a.reminder24hSent,'24 h')}
+      </div></div>`;
+  }).join('');
+}
+function tile(n,l){ return `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`; }
+function badge(done,label){ return `<span class="badge ${done?'done':'wait'}">${done?'✓ ':''}${label}</span>`; }
+
+// ---- Outbox ----
+function pushOutbox(item){ OUTBOX.unshift(item); }
+function updateObCount(){
+  const c=document.getElementById('obCount');
+  c.textContent = OUTBOX.length ? '('+OUTBOX.length+')' : '';
+}
+function renderOutbox(){
+  updateObCount();
+  const box=document.getElementById('outbox');
+  if(!OUTBOX.length){ box.innerHTML='<div class="empty">Noch nichts gesendet.</div>'; return; }
+  box.innerHTML=OUTBOX.map((o,i)=>{
+    const t=new Date(o.ts).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const head=`<div class="ob-head" onclick="toggleOb(${i})">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ob-type mail">E-MAIL</span>
+        <div style="min-width:0">
+          <div class="ob-to">${esc(o.to)}</div>
+          <div class="ob-sub">${esc(o.subject||o.label||'')}</div>
+        </div>
+      </div>
+      <div class="ob-time">${t}</div></div>`;
+    const body = `<div class="ob-body" id="ob-${i}"><iframe class="mailframe" id="frame-${i}"></iframe></div>`;
+    return `<div class="ob">${head}${body}</div>`;
+  }).join('');
+  // iframes nach dem Einfügen sicher befüllen (kein srcdoc-Escaping nötig)
+  OUTBOX.forEach((o,i)=>{
+    const f=document.getElementById('frame-'+i);
+    if(f){ const d=f.contentWindow.document; d.open(); d.write(o.html); d.close(); }
+  });
+}
+function toggleOb(i){ document.getElementById('ob-'+i).classList.toggle('open'); }
+document.getElementById('clearOutbox').onclick=()=>{ OUTBOX=[]; renderOutbox(); updateObCount(); };
+
+// ---- Simulation: Uhr ----
+function renderClock(){
+  document.getElementById('simClock').textContent =
+    new Date(nowSim()).toLocaleString('de-DE',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'});
+}
+document.querySelectorAll('[data-skip]').forEach(b=>{
+  b.onclick=()=>{ CLOCK_OFFSET += Number(b.dataset.skip)*3600*1000; renderClock(); };
+});
+document.getElementById('resetClock').onclick=()=>{ CLOCK_OFFSET=0; renderClock(); };
+
+// ---- Simulation: Erinnerungslauf (gleiche Schwellenlogik wie send-reminders.js) ----
+document.getElementById('runReminders').onclick=()=>{
+  const msg=document.getElementById('simMsg'); msg.className='msg';
+  const now=nowSim();
+  const localHour=new Date(now).getHours();
+  const quiet = localHour<8 || localHour>=20;
+  let r3=0,r24=0;
+  if(quiet){
+    msg.className='msg err';
+    msg.textContent='Ruhezeit (vor 8 / nach 20 Uhr) – im Echtbetrieb würde jetzt nichts gesendet. Stelle die Zeit auf tagsüber.';
+    return;
+  }
+  DB.forEach(a=>{
+    const appt=new Date(a.date+'T'+a.time+':00').getTime();
+    if(isNaN(appt)||appt<now) return;
+    const h=(appt-now)/3600000;
+    if(!a.reminder3dSent && h<=THRESHOLD_3D){
+      pushOutbox({type:'mail', to:a.email, subject:'Erinnerung: Ihr Osteopathie-Termin bei PhysioPro Lübeck', html:reminder3dHtml(a), ts:now});
+      a.reminder3dSent=true; r3++;
+    }
+    if(!a.reminder24hSent && h<=THRESHOLD_24H){
+      pushOutbox({type:'mail', to:a.email, subject:'Morgen: Ihr Osteopathie-Termin bei PhysioPro Lübeck', html:reminder24hHtml(a), ts:now});
+      a.reminder24hSent=true; r24++;
+    }
+  });
+  updateObCount();
+  msg.className='msg ok';
+  msg.textContent = (r3+r24===0)
+    ? 'Lauf ausgeführt – aktuell keine Erinnerung fällig. Spule die Zeit näher an einen Termin.'
+    : `Lauf ausgeführt: ${r3}× 3-Tage-Erinnerung, ${r24}× 24h-Erinnerung in die Outbox gelegt.`;
+};
+
+// ---- Testdaten ----
+document.getElementById('seed').onclick=()=>{
+  const base=nowSim();
+  const mk=(h)=>{ const d=new Date(base+h*3600*1000); return {date:d.toISOString().slice(0,10), time:d.toTimeString().slice(0,5)}; };
+  const samples=[
+    {firstName:'Maria',lastName:'Schmidt',email:'maria@example.de',cc:'+49',phone:'15123456789',practitioner:'Julia Mielke',note:'',...mk(72)},
+    {firstName:'Tom',lastName:'Berger',email:'tom@example.de',cc:'+49',phone:'17698765432',practitioner:'Julia Mielke',note:'kurzfristig',...mk(25)},
+    {firstName:'Lena',lastName:'Voss',email:'lena@example.de',cc:'+49',phone:'15201112233',practitioner:'Hanna Wrobel',note:'',...mk(240)}
+  ];
+  samples.forEach(createAppointment);
+  const msg=document.getElementById('simMsg'); msg.className='msg ok';
+  msg.textContent='3 Beispieltermine angelegt (in 3 Tagen, in 25 h, in 10 Tagen). Bestätigungen liegen in der Outbox.';
+};
+
+// ---- Erinnerungs-Mails (identisch zur Server-Version _mail.js) ----
+function reminder3dHtml(a){
+  const {long, time} = fmtParts(a);
+  return mailShell('Terminerinnerung', `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">wir möchten Sie an Ihren bevorstehenden Osteopathie-Termin erinnern:</p>
+    ${apptBlock(a, long, time)}
+    <div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+      <div style="font-size:13px;color:#7a766d;line-height:1.5">Falls Ihnen der Termin nicht mehr passt, geben Sie uns bitte bis spätestens <strong>24 Stunden vorher</strong> Bescheid – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail. So können wir den Platz noch anderweitig vergeben. Bei späterer Absage entsteht eine Ausfallgebühr von <strong>96 €</strong>.</div></div>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Bis bald!<br>Ihr PhysioPro-Team</p>`);
+}
+function reminder24hHtml(a){
+  const {long, time} = fmtParts(a);
+  return mailShell('Terminerinnerung', `
+    <p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.55">kurze Erinnerung: Ihr Osteopathie-Termin findet <strong>morgen</strong> statt.</p>
+    ${apptBlock(a, long, time)}
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.55">Wir freuen uns auf Sie! Falls etwas dazwischenkommt, melden Sie sich bitte umgehend telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a>.</p>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.55">Ihr PhysioPro-Team</p>`);
+}
+
+// ---- E-Mail-Templates (identisch zur Server-Version _mail.js) ----
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtParts(a){
+  const dt=new Date(a.date+'T'+a.time);
+  return { long: dt.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}), time: a.time+' Uhr' };
+}
+function mailShell(subtitle, inner){
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"></head>
+<body style="margin:0;background:#faf8f4;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2b28">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;padding:24px 0"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid #e5ddd0;border-radius:14px;overflow:hidden">
+<tr><td style="background:#55725e;padding:26px 30px">
+<div style="color:#faf8f4;font-size:18px;font-weight:600">PhysioPro Lübeck</div>
+<div style="color:#c4b09a;font-size:13px;margin-top:2px">Osteopathie · ${subtitle}</div></td></tr>
+<tr><td style="padding:30px">${inner}</td></tr>
+<tr><td style="background:#faf8f4;border-top:1px solid #e5ddd0;padding:18px 30px">
+<div style="font-size:12px;color:#7a766d;line-height:1.5">PhysioPro Lübeck · Hanna Wrobel · Segeberger Str. 1 · 23617 Stockelsdorf<br>0451 / 400 730 73 · info@physioproluebeck.de · physioproluebeck.de</div></td></tr>
+</table></td></tr></table></body></html>`;
+}
+function apptBlock(a, dateStr, timeStr){
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;border:1px solid #e5ddd0;border-radius:12px;margin-bottom:22px"><tr><td style="padding:18px 20px">
+<div style="font-size:13px;color:#7a766d">Datum &amp; Uhrzeit</div>
+<div style="font-size:16px;font-weight:600;color:#3f5648;margin:2px 0 12px">${dateStr} · ${timeStr}</div>
+<div style="font-size:13px;color:#7a766d">Behandler:in</div>
+<div style="font-size:15px;font-weight:600;color:#3f5648;margin:2px 0 12px">${esc(a.practitioner||'PhysioPro Team')}</div>
+<div style="font-size:13px;color:#7a766d">Dauer &amp; Preis</div>
+<div style="font-size:15px;font-weight:600;color:#3f5648;margin-top:2px">60 Minuten · 120 €</div></td></tr></table>`;
+}
+function confirmationHtml(a){
+  const {long, time} = fmtParts(a);
+  return mailShell('Terminbestätigung', `
+<p style="margin:0 0 16px;font-size:15px">Hallo ${esc(a.firstName)} ${esc(a.lastName)},</p>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.55">vielen Dank für Ihre Terminvereinbarung. Wir bestätigen Ihnen hiermit folgenden Osteopathie-Termin:</p>
+${apptBlock(a, long, time)}
+<div style="background:#f3ede2;border-left:3px solid #c4b09a;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:22px">
+<div style="font-size:13px;font-weight:600;color:#3f5648;margin-bottom:6px">Hinweis zur Absage</div>
+<div style="font-size:13px;color:#7a766d;line-height:1.5">Sollten Sie den Termin nicht wahrnehmen können, sagen Sie bitte bis spätestens <strong>24 Stunden vorher</strong> ab – telefonisch unter <a href="tel:+4945140073073" style="color:#55725e">0451 / 400 730 73</a> oder per E-Mail. Bei späterer Absage oder Nichterscheinen müssen wir leider eine Ausfallgebühr von <strong>96 € (80 %)</strong> berechnen, da der reservierte Zeitraum dann nicht mehr anderweitig vergeben werden kann.</div></div>
+<p style="margin:0 0 6px;font-size:14px;line-height:1.55">Zur Sicherheit erhalten Sie <strong>3 Tage</strong> und <strong>24 Stunden</strong> vor dem Termin noch eine kurze Erinnerung per E-Mail.</p>
+<p style="margin:18px 0 0;font-size:14px;line-height:1.55">Wir freuen uns auf Ihren Besuch.<br>Ihr PhysioPro-Team</p>`);
+}
+
+// init
+renderClock();
+</script>
+<div class="toast-overlay" id="toast">
+  <div class="toast-card">
+    <div class="toast-check">
+      <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M16 27l7 7 13-14"/></svg>
+    </div>
+    <div class="toast-title">Bestätigung gesendet</div>
+    <div class="toast-sub" id="toastSub">an die angegebene E-Mail-Adresse</div>
+  </div>
+</div>
+</body>
+</html>

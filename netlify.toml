@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Erinnerungs-Cron: alle 30 Minuten prüfen.
+# Ruhezeiten (vor 8 / nach 20 Uhr) werden in der Function selbst abgefangen.
+[functions."send-reminders"]
+  schedule = "*/30 * * * *"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false

@@ -1,0 +1,7 @@
+{
+  "name": "physiopro-osteo-termine",
+  "version": "1.0.0",
+  "description": "Osteopathie-Terminerfassung mit E-Mail-Bestätigung und WhatsApp-Erinnerungen",
+  "private": true,
+  "engines": { "node": ">=18" }
+}
