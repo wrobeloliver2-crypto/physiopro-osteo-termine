@@ -11,24 +11,32 @@ exports.handler = async (event)=>{
     // Serverseitige Mindestvalidierung (phone ist optional)
     if(!a.firstName||!a.lastName||!a.email||!a.date||!a.time)
       return resp(400,{error:'Pflichtfelder fehlen.'});
+    // Terminart ist Pflicht (keine Vorauswahl)
+    const type = (a.type==='check') ? 'check' : (a.type==='osteo' ? 'osteo' : '');
+    if(!type)
+      return resp(400,{error:'Bitte Terminart wählen.'});
 
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
-    // Zeile gemäß HEADERS-Reihenfolge (16 Spalten)
+    // Zeile gemäß HEADERS-Reihenfolge (17 Spalten)
     const row = [
       id, createdAt, a.firstName, a.lastName, a.email,
       a.cc||'+49', a.phone, a.date, a.time,
       a.practitioner||'', a.note||'',
       '0','0','0',  // confirmSent, reminder3dSent, reminder24hSent
-      'active', ''  // status, cancelledAt
+      'active', '',  // status, cancelledAt
+      type  // type: 'osteo' | 'check'
     ];
     await sheetAppend(row);
 
     // Bestätigungsmail senden
     let confirmOk = false;
+    const betreff = (type==='check')
+      ? 'Ihr Osteopathie-Check bei PhysioPro Lübeck'
+      : 'Ihr Osteopathie-Termin bei PhysioPro Lübeck';
     try{
-      await sendMail(a.email, 'Ihr Osteopathie-Termin bei PhysioPro Lübeck', confirmationHtml(a));
+      await sendMail(a.email, betreff, confirmationHtml(a));
       confirmOk = true;
     }catch(mailErr){
       console.error('Mailfehler:', mailErr.message);
