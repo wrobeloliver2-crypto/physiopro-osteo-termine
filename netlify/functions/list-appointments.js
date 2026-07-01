@@ -1,7 +1,6 @@
-const { requireAuth, sheetReadAll } = require('./_lib');
+const { sheetReadAll } = require('./_lib');
 
 exports.handler = async (event)=>{
-  if(!requireAuth(event)) return resp(401,{error:'Nicht angemeldet.'});
   try{
     const all = await sheetReadAll();
     // Nur relevante Felder ans Frontend

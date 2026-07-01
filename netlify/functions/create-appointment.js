@@ -1,10 +1,9 @@
-const { requireAuth, sheetAppend, sheetUpdateCell, COL } = require('./_lib');
+const { sheetAppend, sheetUpdateCell, COL } = require('./_lib');
 const { sendMail, confirmationHtml } = require('./_mail');
 const crypto = require('crypto');
 
 exports.handler = async (event)=>{
   if(event.httpMethod!=='POST') return resp(405,{error:'Method not allowed'});
-  if(!requireAuth(event)) return resp(401,{error:'Nicht angemeldet.'});
 
   try{
     const a = JSON.parse(event.body||'{}');

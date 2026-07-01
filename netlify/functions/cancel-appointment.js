@@ -1,4 +1,4 @@
-const { requireAuth, sheetReadAll, sheetUpdateCell, COL, berlinLocalToUtcMs } = require('./_lib');
+const { sheetReadAll, sheetUpdateCell, COL, berlinLocalToUtcMs } = require('./_lib');
 const { sendMail, cancellationHtml } = require('./_mail');
 
 // Sagt einen Termin ab: bestimmt anhand der Berliner Zeit, ob rechtzeitig (>=24h,
@@ -6,7 +6,6 @@ const { sendMail, cancellationHtml } = require('./_mail');
 // Absage-Mail und markiert den Termin im Sheet als storniert (loescht ihn nicht).
 exports.handler = async (event)=>{
   if(event.httpMethod!=='POST') return resp(405,{error:'Method not allowed'});
-  if(!requireAuth(event)) return resp(401,{error:'Nicht angemeldet.'});
 
   try{
     const { id } = JSON.parse(event.body||'{}');

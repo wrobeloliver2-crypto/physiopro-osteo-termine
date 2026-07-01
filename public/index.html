@@ -95,8 +95,6 @@
     background:#fff;cursor:pointer;font-weight:600;font-size:.88rem;color:var(--muted)}
   .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
   .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:.88rem}
-  .loginbox{max-width:380px;margin:60px auto;text-align:center}
-  .loginbox .card{padding:30px 24px}
   /* Bestätigungs-Overlay */
   .toast-overlay{position:fixed;inset:0;background:rgba(43,43,40,.28);display:flex;align-items:center;
     justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -200,17 +198,6 @@
       <div id="apptList"><div class="empty">Wird geladen…</div></div>
     </div>
   </section>
-</div>
-
-<!-- LOGIN -->
-<div class="loginbox" id="login">
-  <div class="card">
-    <h2 style="text-align:center">Anmeldung</h2>
-    <p style="font-size:.86rem;color:var(--muted);margin-top:0">Zugangscode eingeben.</p>
-    <input id="pin" type="password" placeholder="Code" style="text-align:center">
-    <button class="primary" id="loginBtn">Anmelden</button>
-    <div class="msg" id="loginMsg"></div>
-  </div>
 </div>
 
 <div class="toast-overlay" id="toast">

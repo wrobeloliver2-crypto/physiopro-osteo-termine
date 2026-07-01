@@ -3,44 +3,18 @@ const CANCEL_FEE = 96;      // 80% von 120 €
 const PRICE = 120;
 const FEE_HOURS = 24;       // kostenfreie Absage bis 24h vorher
 
-// === Auth (simpel: PIN -> Token im sessionStorage) ===
-// Hinweis: kein localStorage in Artefakten – hier echte PWA, sessionStorage ok auf Netlify.
-let TOKEN = sessionStorage.getItem('osteo_token') || '';
+// === Auth entfernt: App ist offen zugänglich, kein PIN-Login mehr ===
+const TOKEN = '';
 
 function show(el){el.style.display=''}
 function hide(el){el.style.display='none'}
 
 function gotoApp(){
-  hide(document.getElementById('login'));
   show(document.getElementById('app'));
   loadList();
 }
 
-if(TOKEN){ gotoApp(); }
-
-document.getElementById('loginBtn').onclick = doLogin;
-document.getElementById('pin').addEventListener('keydown', (e)=>{
-  if(e.key==='Enter'){ e.preventDefault(); doLogin(); }
-});
-async function doLogin(){
-  const pin = document.getElementById('pin').value.trim();
-  const msg = document.getElementById('loginMsg');
-  if(!pin){ return; }
-  try{
-    const r = await fetch('/.netlify/functions/login',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pin})
-    });
-    const d = await r.json();
-    if(r.ok && d.token){
-      TOKEN = d.token; sessionStorage.setItem('osteo_token',TOKEN); gotoApp();
-    }else if(d.error==='config'){
-      msg.className='msg err'; msg.textContent='Login noch nicht bereit – bitte Variablen prüfen und Site neu deployen.';
-    }else{
-      msg.className='msg err'; msg.textContent='Code ungültig.';
-    }
-  }catch(e){ msg.className='msg err'; msg.textContent='Verbindungsfehler.'; }
-};
+gotoApp();
 
 // === Tabs ===
 document.querySelectorAll('.tab').forEach(t=>{

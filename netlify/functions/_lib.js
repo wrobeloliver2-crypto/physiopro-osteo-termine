@@ -1,31 +1,6 @@
 // Gemeinsame Helfer für alle Functions
 const crypto = require('crypto');
 
-// ---------- Auth ----------
-// Einfacher signierter Token (HMAC). Kein User-System nötig – nur Team-PIN.
-function signToken(secret){
-  const payload = `team.${Date.now()}`;
-  const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-  return Buffer.from(payload+'|'+sig).toString('base64');
-}
-function verifyToken(token, secret){
-  try{
-    const raw = Buffer.from(token,'base64').toString();
-    const [payload, sig] = raw.split('|');
-    const expect = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-    if(sig !== expect) return false;
-    // Optional: Ablauf nach 30 Tagen
-    const ts = Number(payload.split('.')[1]);
-    if(Date.now() - ts > 30*24*3600*1000) return false;
-    return true;
-  }catch(e){ return false; }
-}
-function requireAuth(event){
-  const h = event.headers.authorization || event.headers.Authorization || '';
-  const token = h.replace('Bearer ','');
-  return verifyToken(token, process.env.AUTH_SECRET);
-}
-
 // ---------- Google Sheets via Service Account ----------
 // Wir nutzen die REST-API mit JWT-Bearer (kein npm-Paket nötig außer für JWT-Signatur).
 async function getGoogleAccessToken(){
@@ -146,7 +121,6 @@ function berlinHour(utcMs){
 }
 
 module.exports = {
-  signToken, verifyToken, requireAuth,
   sheetAppend, sheetReadAll, sheetUpdateCell,
   HEADERS, COL,
   berlinLocalToUtcMs, berlinHour
